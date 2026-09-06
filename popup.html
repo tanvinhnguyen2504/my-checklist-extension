@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>Checklist</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<header class="bar">
+  <div class="titles">
+    <div class="title">Checklist</div>
+    <div class="sub"><span id="count">0 of 0</span> done</div>
+  </div>
+  <button id="btn-check-all" class="chip" type="button" title="Mark everything done">&check; MARK ALL</button>
+  <button id="btn-clear-all" class="chip danger" type="button" title="Remove every item">CLEAR</button>
+  <button id="theme" class="chip" type="button" title="Toggle light / dark">
+    <span class="dot"></span><span id="theme-label">LIGHT</span>
+  </button>
+</header>
+
+<div class="track"><div id="progress" class="fill"></div></div>
+
+<main id="list" class="list"></main>
+
+<template id="row-tpl">
+  <div class="row" draggable="true">
+    <button class="flag" type="button" title="Set priority" aria-haspopup="menu" aria-expanded="false"></button>
+    <div class="body">
+      <button class="box" type="button" title="Toggle done"></button>
+      <span class="text"></span>
+      <span class="tag"></span>
+      <button class="del" type="button" title="Delete">&times;</button>
+    </div>
+  </div>
+</template>
+
+<template id="group-tpl">
+  <section class="group">
+    <header class="group-head">
+      <span class="group-label"></span>
+      <span class="group-date"></span>
+      <span class="group-count"></span>
+    </header>
+  </section>
+</template>
+
+<div id="priority-menu" class="menu" role="menu" aria-label="Set priority" hidden></div>
+
+<footer class="compose">
+  <input id="draft" type="text" placeholder="Add an item, Enter to save" autocomplete="off" spellcheck="false">
+  <button id="add" class="enter" type="button" title="Add">&crarr;</button>
+</footer>
+
+<script type="module" src="popup.js"></script>
+</body>
+</html>
