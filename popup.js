@@ -1,12 +1,8 @@
 import {
   THEME,
   countDone,
-  formatDayKeyShort,
   isAllDone,
-  isDayKey,
   loadState,
-  PRIORITY_LABELS,
-  PRIORITY_ORDER,
   groupByDay,
   todayKey,
   moveItem,
@@ -18,6 +14,9 @@ import {
   touchItem,
 } from "./utils.js";
 import { createDragController } from "./drag-drop.js";
+import { closeMenu, installMenuDismissal } from "./menu.js";
+import { attachPriorityTag } from "./priority.js";
+import { attachDueChip } from "./due-date.js";
 
 const listEl = document.getElementById("list");
 const rowTemplate = document.getElementById("row-tpl");
@@ -29,7 +28,6 @@ const themeLabelEl = document.getElementById("theme-label");
 const checkAllButtonEl = document.getElementById("btn-check-all");
 const clearAllButtonEl = document.getElementById("btn-clear-all");
 const addButton = document.getElementById("add");
-const priorityMenuEl = document.getElementById("priority-menu");
 const groupTemplate = document.getElementById("group-tpl");
 
 const CLEAR_CONFIRM_MS = 3000;
@@ -37,8 +35,6 @@ const CLEAR_CONFIRM_MS = 3000;
 let state = { items: [], theme: THEME.LIGHT };
 let clearArmed = false;
 let clearTimer = null;
-let menuAnchorEl = null;
-let openMenuEl = null;
 // The pointer press that dismisses an open editor also completes as a click,
 // and that click lands on .body -- which would toggle the row off the back of
 // a gesture the user meant as "close the editor". Holds the element that press
@@ -85,14 +81,14 @@ function renderRow(item, index, dayKey) {
   // readable from the tooltip.
   textEl.title = item.text;
 
-  const tagEl = row.querySelector(".tag");
-  tagEl.textContent = PRIORITY_LABELS[item.priority];
-
-  const dueEl = row.querySelector(".due");
-  const dueInputEl = row.querySelector(".due-input");
-  dueEl.textContent = item.dueDate ? formatDayKeyShort(item.dueDate) : "SET DAY";
-  dueEl.dataset.unset = String(!item.dueDate);
-  dueInputEl.value = item.dueDate || "";
+  attachPriorityTag(row.querySelector(".tag"), item, (priority) => {
+    touchItem(item).priority = priority;
+    saveAndRender();
+  });
+  attachDueChip(row.querySelector(".due"), row.querySelector(".due-input"), item, (dayKey) => {
+    assignDay(index, dayKey);
+    saveAndRender();
+  });
 
   row.querySelector(".body").addEventListener("click", (event) => {
     if (consumeEditorDismissal(event)) return;
@@ -108,22 +104,6 @@ function renderRow(item, index, dayKey) {
     startEditing(row, item);
   });
 
-  const togglePriorityMenu = (anchorEl) => {
-    if (menuAnchorEl === anchorEl) {
-      closeMenu();
-      return;
-    }
-    openPriorityMenu(anchorEl, index);
-  };
-  tagEl.addEventListener("click", () => togglePriorityMenu(tagEl));
-
-  dueEl.addEventListener("click", () => openDatePicker(dueInputEl));
-  dueInputEl.addEventListener("change", () => {
-    // Clearing the field is how an item goes back to unscheduled.
-    assignDay(index, isDayKey(dueInputEl.value) ? dueInputEl.value : null);
-    saveAndRender();
-  });
-
   row.querySelector(".del").addEventListener("click", () => {
     state.items.splice(index, 1);
     saveAndRender();
@@ -131,17 +111,6 @@ function renderRow(item, index, dayKey) {
 
   dragController.attachRow(row, index, dayKey);
   return row;
-}
-
-// The chip is the visible control; the real <input type="date"> sits beside it
-// unstyled and off-screen purely to host the browser's calendar. showPicker()
-// needs a user gesture, which the chip click provides.
-function openDatePicker(inputEl) {
-  closeMenu();
-  if (typeof inputEl.showPicker === "function") {
-    inputEl.showPicker();
-  }
-  else inputEl.focus();
 }
 
 function renderGroup(group) {
@@ -250,97 +219,6 @@ function startEditing(row, item) {
   input.select();
 }
 
-function closeMenu() {
-  if (!menuAnchorEl) return;
-  menuAnchorEl.setAttribute("aria-expanded", "false");
-  menuAnchorEl = null;
-  openMenuEl.hidden = true;
-  openMenuEl.textContent = "";
-  openMenuEl = null;
-}
-
-function buildMenuItem({ label, priority = null, checked = false, onPick }) {
-  const item = document.createElement("button");
-  item.type = "button";
-  item.className = "menu-item";
-  item.role = "menuitemradio";
-  item.setAttribute("aria-checked", String(checked));
-
-  if (priority !== null) {
-    item.dataset.priority = String(priority);
-    const dot = document.createElement("span");
-    dot.className = "menu-dot";
-    item.append(dot);
-  }
-
-  const labelEl = document.createElement("span");
-  labelEl.className = "menu-label";
-  labelEl.textContent = label;
-
-  const check = document.createElement("span");
-  check.className = "menu-check";
-  check.textContent = "\u2713";
-
-  item.append(labelEl, check);
-  item.addEventListener("click", onPick);
-  return item;
-}
-
-// Anchors the menu to its trigger, flipping above when there is no room below.
-// Fixed positioning so the scrolling list cannot clip it.
-function positionMenu(menuEl, anchorEl) {
-  const anchor = anchorEl.getBoundingClientRect();
-  const menu = menuEl.getBoundingClientRect();
-  const margin = 6;
-
-  const fitsBelow = anchor.bottom + menu.height + margin <= window.innerHeight;
-  const top = fitsBelow ? anchor.bottom + 2 : anchor.top - menu.height - 2;
-  const left = Math.min(anchor.left, window.innerWidth - menu.width - margin);
-
-  menuEl.style.top = `${Math.max(margin, top)}px`;
-  menuEl.style.left = `${Math.max(margin, left)}px`;
-}
-
-function openMenu(menuEl, anchorEl, entries) {
-  closeMenu();
-
-  entries.forEach((entry) => menuEl.append(buildMenuItem(entry)));
-
-  menuAnchorEl = anchorEl;
-  openMenuEl = menuEl;
-  anchorEl.setAttribute("aria-expanded", "true");
-  menuEl.hidden = false;
-  positionMenu(menuEl, anchorEl);
-
-  const items = [...menuEl.querySelectorAll(".menu-item")];
-  (items.find((el) => el.getAttribute("aria-checked") === "true") || items[0]).focus();
-}
-
-function openPriorityMenu(anchorEl, index) {
-  const current = state.items[index].priority;
-  openMenu(
-    priorityMenuEl,
-    anchorEl,
-    PRIORITY_ORDER.map((priority) => ({
-      label: PRIORITY_LABELS[priority],
-      priority,
-      checked: priority === current,
-      onPick: () => {
-        touchItem(state.items[index]).priority = priority;
-        closeMenu();
-        saveAndRender();
-      },
-    }))
-  );
-}
-
-function moveMenuFocus(step) {
-  const items = [...openMenuEl.querySelectorAll(".menu-item")];
-  const current = items.indexOf(document.activeElement);
-  const next = (current + step + items.length) % items.length;
-  items[next].focus();
-}
-
 function setTheme() {
   document.documentElement.dataset.theme = state.theme;
   themeLabelEl.textContent = state.theme === THEME.LIGHT ? "LIGHT" : "DARK";
@@ -407,30 +285,11 @@ function handleEventListener() {
     state.items = [];
     saveAndRender();
   });
-  document.addEventListener("keydown", (event) => {
-    if (!menuAnchorEl) return;
-    if (event.key === "Escape") {
-      const anchorEl = menuAnchorEl;
-      closeMenu();
-      anchorEl.focus();
-    } else if (event.key === "ArrowDown") {
-      event.preventDefault();
-      moveMenuFocus(1);
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      moveMenuFocus(-1);
-    }
-  });
   // Backstop: a press that dismissed an editor without producing a click on a
   // row (pressing the header, say) would otherwise leave the flag set and eat
   // the next genuine click. document is above .body, so this runs after it.
   document.addEventListener("click", () => {
     editorDismissedBy = null;
-  });
-  document.addEventListener("pointerdown", (event) => {
-    if (!menuAnchorEl) return;
-    if (openMenuEl.contains(event.target) || event.target === menuAnchorEl) return;
-    closeMenu();
   });
   listEl.addEventListener("scroll", closeMenu);
   themeButton.addEventListener("click", () => {
@@ -439,7 +298,8 @@ function handleEventListener() {
   });
 }
 
-handleEventListener()
+installMenuDismissal();
+handleEventListener();
 
 loadState().then((savedState) => {
   state = savedState;
