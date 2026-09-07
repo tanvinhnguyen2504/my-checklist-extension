@@ -78,7 +78,11 @@ export function parseDraft(rawText) {
 }
 
 // Menu order: most urgent first. Drives both the popover and its labels.
-export const PRIORITY_ORDER = [PRIORITY.HIGH, PRIORITY.NORMAL, PRIORITY.LOW];
+export const PRIORITY_ORDER = [
+  PRIORITY.HIGH,
+  PRIORITY.NORMAL,
+  PRIORITY.LOW,
+];
 
 export const PRIORITY_LABELS = {
   [PRIORITY.HIGH]: "HIGH",

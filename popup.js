@@ -39,6 +39,22 @@ let clearArmed = false;
 let clearTimer = null;
 let menuAnchorEl = null;
 let openMenuEl = null;
+// The pointer press that dismisses an open editor also completes as a click,
+// and that click lands on .body -- which would toggle the row off the back of
+// a gesture the user meant as "close the editor". Holds the element that press
+// landed on, so the click it produces can be ignored exactly once.
+let editorDismissedBy = null;
+
+// True when `event` is the click completing the press that just dismissed an
+// editor. Matching on the pressed element rather than on a timer is deliberate:
+// the gap between mousedown and click is however long the user holds the
+// button, which no timeout can bound.
+function consumeEditorDismissal(event) {
+  if (!editorDismissedBy) return false;
+  const pressedEl = editorDismissedBy;
+  editorDismissedBy = null;
+  return event.target === pressedEl || event.target.contains(pressedEl);
+}
 
 function renderEmptyState() {
   const empty = document.createElement("div");
@@ -79,6 +95,7 @@ function renderRow(item, index, dayKey) {
   dueInputEl.value = item.dueDate || "";
 
   row.querySelector(".body").addEventListener("click", (event) => {
+    if (consumeEditorDismissal(event)) return;
     // The text label is the edit target (double-click); toggling it here would
     // re-render the row before dblclick could fire. The rest are controls with
     // their own handlers.
@@ -91,9 +108,6 @@ function renderRow(item, index, dayKey) {
     startEditing(row, item);
   });
 
-  // Both the edge strip and the pill open the same menu, so either one can be
-  // the anchor it positions against.
-  const flagEl = row.querySelector(".flag");
   const togglePriorityMenu = (anchorEl) => {
     if (menuAnchorEl === anchorEl) {
       closeMenu();
@@ -101,8 +115,8 @@ function renderRow(item, index, dayKey) {
     }
     openPriorityMenu(anchorEl, index);
   };
-  flagEl.addEventListener("click", () => togglePriorityMenu(flagEl));
   tagEl.addEventListener("click", () => togglePriorityMenu(tagEl));
+
   dueEl.addEventListener("click", () => openDatePicker(dueInputEl));
   dueInputEl.addEventListener("change", () => {
     // Clearing the field is how an item goes back to unscheduled.
@@ -124,7 +138,9 @@ function renderRow(item, index, dayKey) {
 // needs a user gesture, which the chip click provides.
 function openDatePicker(inputEl) {
   closeMenu();
-  if (typeof inputEl.showPicker === "function") inputEl.showPicker();
+  if (typeof inputEl.showPicker === "function") {
+    inputEl.showPicker();
+  }
   else inputEl.focus();
 }
 
@@ -199,10 +215,18 @@ function startEditing(row, item) {
 
   dragController.suspendRow(row);
 
+  // Capture phase, so this runs before the press's default action moves focus
+  // and blurs the input -- i.e. before settle() below.
+  const notePress = (event) => {
+    if (!input.contains(event.target)) editorDismissedBy = event.target;
+  };
+  document.addEventListener("mousedown", notePress, true);
+
   let settled = false;
   const settle = (commit) => {
     if (settled) return;
     settled = true;
+    document.removeEventListener("mousedown", notePress, true);
 
     const nextText = input.value.trim();
     if (commit && nextText && nextText !== item.text) {
@@ -396,6 +420,12 @@ function handleEventListener() {
       event.preventDefault();
       moveMenuFocus(-1);
     }
+  });
+  // Backstop: a press that dismissed an editor without producing a click on a
+  // row (pressing the header, say) would otherwise leave the flag set and eat
+  // the next genuine click. document is above .body, so this runs after it.
+  document.addEventListener("click", () => {
+    editorDismissedBy = null;
   });
   document.addEventListener("pointerdown", (event) => {
     if (!menuAnchorEl) return;
