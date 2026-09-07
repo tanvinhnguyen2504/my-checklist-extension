@@ -22,6 +22,17 @@
   --pri-medium-ink: oklch(0.52 0.12 85);
   --pri-low: oklch(0.60 0.17 255);
   --pri-low-ink: oklch(0.52 0.15 255);
+  /* Solid priority pills. The background still derives from the same --pri-*
+     token that paints the row's edge strip, so the two cannot drift. Only the
+     text colour is picked per background, to clear WCAG AA (4.5:1) at the
+     pill's 9.5px type: white on red is 4.67, ink on amber 9.48. Plain --pri-low
+     reaches only 3.93 against white, so it is darkened 10% to land at 5.03. */
+  --tag-high-bg: var(--pri-high);
+  --tag-high-fg: var(--surface);
+  --tag-medium-bg: var(--pri-medium);
+  --tag-medium-fg: var(--ink);
+  --tag-low-bg: color-mix(in oklch, var(--pri-low) 90%, black);
+  --tag-low-fg: var(--surface);
 }
 
 html[data-theme="dark"] {
@@ -48,6 +59,14 @@ html[data-theme="dark"] {
   --pri-medium-ink: oklch(0.86 0.13 85);
   --pri-low: oklch(0.70 0.15 255);
   --pri-low-ink: oklch(0.78 0.13 255);
+  /* Dark theme lifts every --pri-* token well above mid-lightness, so the pill
+     text flips to the page background: 6.19 / 10.87 / 6.68. No darkening needed. */
+  --tag-high-bg: var(--pri-high);
+  --tag-high-fg: var(--bg);
+  --tag-medium-bg: var(--pri-medium);
+  --tag-medium-fg: var(--bg);
+  --tag-low-bg: var(--pri-low);
+  --tag-low-fg: var(--bg);
 }
 
 * { box-sizing: border-box; }
@@ -179,7 +198,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   font: 500 9.5px/1 Arial, sans-serif;
   letter-spacing: 0.06em;
 }
-.tag:hover, .tag[aria-expanded="true"] { box-shadow: inset 0 0 0 1px currentColor; }
+.tag:hover, .tag[aria-expanded="true"] { filter: brightness(0.92); }
 
 /* The due chip is deliberately quieter than the priority pill -- it is a date,
    not a state, and it should not compete with the task text. */
@@ -210,22 +229,13 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   pointer-events: none;
 }
 
-/* The pill tints itself from the same token that paints the row's edge strip,
-   so the two can never drift apart. */
-.row[data-priority="2"] .tag {
-  color: var(--pri-high-ink);
-  background: color-mix(in oklch, var(--pri-high) 18%, transparent);
-}
-.row[data-priority="1"] .tag {
-  color: var(--pri-medium-ink);
-  background: color-mix(in oklch, var(--pri-medium) 26%, transparent);
-}
-.row[data-priority="0"] .tag {
-  color: var(--pri-low-ink);
-  background: color-mix(in oklch, var(--pri-low) 18%, transparent);
-}
+.row[data-priority="2"] .tag { color: var(--tag-high-fg); background: var(--tag-high-bg); }
+.row[data-priority="1"] .tag { color: var(--tag-medium-fg); background: var(--tag-medium-bg); }
+.row[data-priority="0"] .tag { color: var(--tag-low-fg); background: var(--tag-low-bg); }
 
-/* A completed task's priority stops mattering; the pill steps back. */
+/* A completed task's priority stops mattering; the pill steps back. This has
+   the same specificity as the three rules above and MUST stay below them --
+   swapping the order silently leaves finished rows shouting in full colour. */
 .row[data-done="true"] .tag { color: var(--soft); background: var(--hair); }
 
 .del { flex: none; width: 20px; height: 20px; border-radius: 5px; font-size: 15px; color: var(--dim); opacity: 0; }
