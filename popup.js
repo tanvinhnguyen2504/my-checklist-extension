@@ -58,8 +58,14 @@ function renderRow(item, index, dayKey) {
   const row = rowTemplate.content.firstElementChild.cloneNode(true);
   row.dataset.priority = String(item.priority);
   row.dataset.done = String(item.done);
-  row.querySelector(".text").textContent = item.text;
   row.querySelector(".box").textContent = item.done ? "✓" : "";
+
+  const textEl = row.querySelector(".text");
+  textEl.textContent = item.text;
+  // The label is a single ellipsised line, so the full text is only ever
+  // readable from the tooltip.
+  textEl.title = item.text;
+
   const tagEl = row.querySelector(".tag");
   tagEl.textContent = PRIORITY_LABELS[item.priority];
 
@@ -72,7 +78,7 @@ function renderRow(item, index, dayKey) {
     touchItem(item);
     saveAndRender();
   });
-  row.querySelector(".text").addEventListener("dblclick", () => {
+  textEl.addEventListener("dblclick", () => {
     startEditing(row, item);
   });
 
