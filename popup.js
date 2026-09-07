@@ -17,6 +17,7 @@ import { createDragController } from "./drag-drop.js";
 import { closeMenu, installMenuDismissal } from "./menu.js";
 import { attachPriorityTag } from "./priority.js";
 import { attachDueChip } from "./due-date.js";
+import { downloadCsv } from "./export.js";
 
 const listEl = document.getElementById("list");
 const rowTemplate = document.getElementById("row-tpl");
@@ -27,6 +28,7 @@ const themeButton = document.getElementById("theme");
 const themeLabelEl = document.getElementById("theme-label");
 const checkAllButtonEl = document.getElementById("btn-check-all");
 const clearAllButtonEl = document.getElementById("btn-clear-all");
+const exportButtonEl = document.getElementById("btn-export-csv");
 const addButton = document.getElementById("add");
 const groupTemplate = document.getElementById("group-tpl");
 
@@ -168,6 +170,7 @@ function renderActions() {
   checkAllButtonEl.title = allDone ? "Clear every tick" : "Mark everything done";
   checkAllButtonEl.dataset.allDone = String(allDone);
   clearAllButtonEl.disabled = isEmpty;
+  exportButtonEl.disabled = isEmpty;
   clearAllButtonEl.textContent = clearArmed ? "SURE?" : "CLEAR";
   clearAllButtonEl.dataset.armed = String(clearArmed);
 }
@@ -292,6 +295,9 @@ function handleEventListener() {
     editorDismissedBy = null;
   });
   listEl.addEventListener("scroll", closeMenu);
+  exportButtonEl.addEventListener("click", () => {
+    downloadCsv(state.items);
+  });
   themeButton.addEventListener("click", () => {
     state.theme = nextTheme(state.theme);
     saveAndRender();
