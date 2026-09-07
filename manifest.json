@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Checklist",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A quiet todo checklist in your toolbar. Offline, no account, priority flags.",
   "action": {
     "default_title": "Checklist",
