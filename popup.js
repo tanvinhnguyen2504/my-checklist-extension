@@ -357,7 +357,7 @@ function addItem() {
   saveAndRender();
 }
 
-function handleEventListner() {
+function handleEventListener() {
   addButton.addEventListener("click", addItem);
   draftEl.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
@@ -409,7 +409,7 @@ function handleEventListner() {
   });
 }
 
-handleEventListner()
+handleEventListener()
 
 loadState().then((savedState) => {
   state = savedState;
