@@ -1,6 +1,8 @@
 import {
   THEME,
   countDone,
+  formatDayKeyShort,
+  isDayKey,
   loadState,
   PRIORITY_LABELS,
   PRIORITY_ORDER,
@@ -52,7 +54,7 @@ function renderEmptyState() {
 }
 
 // Controls inside .body that must not fall through to the done-toggle below.
-const BODY_CONTROLS = ".del, .text, .tag";
+const BODY_CONTROLS = ".del, .text, .tag, .due";
 
 function renderRow(item, index, dayKey) {
   const row = rowTemplate.content.firstElementChild.cloneNode(true);
@@ -68,6 +70,12 @@ function renderRow(item, index, dayKey) {
 
   const tagEl = row.querySelector(".tag");
   tagEl.textContent = PRIORITY_LABELS[item.priority];
+
+  const dueEl = row.querySelector(".due");
+  const dueInputEl = row.querySelector(".due-input");
+  dueEl.textContent = item.dueDate ? formatDayKeyShort(item.dueDate) : "SET DAY";
+  dueEl.dataset.unset = String(!item.dueDate);
+  dueInputEl.value = item.dueDate || "";
 
   row.querySelector(".body").addEventListener("click", (event) => {
     // The text label is the edit target (double-click); toggling it here would
@@ -94,6 +102,13 @@ function renderRow(item, index, dayKey) {
   };
   flagEl.addEventListener("click", () => togglePriorityMenu(flagEl));
   tagEl.addEventListener("click", () => togglePriorityMenu(tagEl));
+  dueEl.addEventListener("click", () => openDatePicker(dueInputEl));
+  dueInputEl.addEventListener("change", () => {
+    // Clearing the field is how an item goes back to unscheduled.
+    assignDay(index, isDayKey(dueInputEl.value) ? dueInputEl.value : null);
+    saveAndRender();
+  });
+
   row.querySelector(".del").addEventListener("click", () => {
     state.items.splice(index, 1);
     saveAndRender();
@@ -101,6 +116,15 @@ function renderRow(item, index, dayKey) {
 
   dragController.attachRow(row, index, dayKey);
   return row;
+}
+
+// The chip is the visible control; the real <input type="date"> sits beside it
+// unstyled and off-screen purely to host the browser's calendar. showPicker()
+// needs a user gesture, which the chip click provides.
+function openDatePicker(inputEl) {
+  closeMenu();
+  if (typeof inputEl.showPicker === "function") inputEl.showPicker();
+  else inputEl.focus();
 }
 
 function renderGroup(group) {

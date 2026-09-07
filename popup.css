@@ -181,6 +181,35 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 }
 .tag:hover, .tag[aria-expanded="true"] { box-shadow: inset 0 0 0 1px currentColor; }
 
+/* The due chip is deliberately quieter than the priority pill -- it is a date,
+   not a state, and it should not compete with the task text. */
+.due {
+  flex: none;
+  padding: 3px 5px;
+  border-radius: 4px;
+  font: 500 9.5px/1 Arial, sans-serif;
+  letter-spacing: 0.06em;
+  color: var(--dim);
+  background: var(--chip);
+}
+.due:hover { color: var(--ink); }
+.due[data-unset="true"] { color: var(--clay-ink); background: transparent; box-shadow: inset 0 0 0 1px var(--dash); }
+.row[data-done="true"] .due { color: var(--soft); }
+
+/* Present but invisible: showPicker() needs a real, rendered input. It sits
+   outside .body because .body's 11px gap would reserve a column for it even at
+   zero width; .row has no gap, so here it costs nothing and still anchors the
+   calendar to the right-hand end of the row where the chip is. */
+.due-input {
+  flex: none;
+  width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* The pill tints itself from the same token that paints the row's edge strip,
    so the two can never drift apart. */
 .row[data-priority="2"] .tag {

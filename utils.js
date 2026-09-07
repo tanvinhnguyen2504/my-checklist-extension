@@ -187,6 +187,14 @@ export function formatDayKey(key) {
   return `${day}/${month}/${year}`;
 }
 
+// Row-width version of formatDayKey: the year is almost always the current one
+// and the row has no space to spend restating it.
+export function formatDayKeyShort(key) {
+  if (!isDayKey(key)) return "";
+  const [, month, day] = key.split("-");
+  return `${day}/${month}`;
+}
+
 // "TODAY" / "TOMORROW" / "YESTERDAY" / "OVERDUE" read faster than a bare date
 // when you are scanning for what to do now.
 export function dayGroupLabel(key, reference = todayKey()) {
