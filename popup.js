@@ -51,19 +51,23 @@ function renderEmptyState() {
   listEl.append(empty);
 }
 
+// Controls inside .body that must not fall through to the done-toggle below.
+const BODY_CONTROLS = ".del, .text, .tag";
+
 function renderRow(item, index, dayKey) {
   const row = rowTemplate.content.firstElementChild.cloneNode(true);
   row.dataset.priority = String(item.priority);
   row.dataset.done = String(item.done);
   row.querySelector(".text").textContent = item.text;
   row.querySelector(".box").textContent = item.done ? "✓" : "";
-  row.querySelector(".tag").textContent = PRIORITY_LABELS[item.priority];
+  const tagEl = row.querySelector(".tag");
+  tagEl.textContent = PRIORITY_LABELS[item.priority];
 
   row.querySelector(".body").addEventListener("click", (event) => {
-    if (event.target.closest(".del")) return;
     // The text label is the edit target (double-click); toggling it here would
-    // re-render the row before dblclick could fire.
-    if (event.target.closest(".text")) return;
+    // re-render the row before dblclick could fire. The rest are controls with
+    // their own handlers.
+    if (event.target.closest(BODY_CONTROLS)) return;
     item.done = !item.done;
     touchItem(item);
     saveAndRender();
@@ -72,14 +76,18 @@ function renderRow(item, index, dayKey) {
     startEditing(row, item);
   });
 
+  // Both the edge strip and the pill open the same menu, so either one can be
+  // the anchor it positions against.
   const flagEl = row.querySelector(".flag");
-  flagEl.addEventListener("click", () => {
-    if (menuAnchorEl === flagEl) {
+  const togglePriorityMenu = (anchorEl) => {
+    if (menuAnchorEl === anchorEl) {
       closeMenu();
       return;
     }
-    openPriorityMenu(flagEl, index);
-  });
+    openPriorityMenu(anchorEl, index);
+  };
+  flagEl.addEventListener("click", () => togglePriorityMenu(flagEl));
+  tagEl.addEventListener("click", () => togglePriorityMenu(tagEl));
   row.querySelector(".del").addEventListener("click", () => {
     state.items.splice(index, 1);
     saveAndRender();
