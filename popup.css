@@ -54,8 +54,13 @@ html[data-theme="dark"] {
 
 body {
   width: 380px;
-  min-height: 520px;
+  /* A fixed height, not a minimum: the header, progress bar and compose row are
+     pinned and .list is the only thing that scrolls. With min-height the popup
+     grew with the list until the browser clipped it and the compose row went
+     out of reach. */
+  height: 520px;
   margin: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   background: var(--bg);
@@ -104,7 +109,10 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .track { height: 3px; background: var(--track); }
 .fill { height: 3px; width: 0; background: var(--teal); transition: width 0.22s ease; }
 
-.list { flex: 1; padding: 4px 0; }
+/* min-height:0 is what actually lets a flex child shrink below its content and
+   scroll; flex:1 alone is not enough. The sticky group headers key off this
+   element being the scroll container. */
+.list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 0; }
 
 .row { display: flex; align-items: stretch; min-height: 44px; border-bottom: 1px solid var(--hair); }
 .flag {
