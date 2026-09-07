@@ -122,8 +122,16 @@ export function debounce(fn, wait) {
   };
 }
 
-export function markAllDone(items) {
-  return items.map((item) => (item.done ? item : { ...item, done: true }));
+export function isAllDone(items) {
+  return items.length > 0 && countDone(items) === items.length;
+}
+
+// Drives both halves of the mark-all / unmark-all toggle. Items already in the
+// target state are returned untouched so a no-op cannot move their timestamp.
+export function setAllDone(items, done) {
+  return items.map((item) =>
+    item.done === done ? item : { ...item, done, updatedAt: Date.now() }
+  );
 }
 
 // Moves the item at `from` so it lands before position `to`, where `to` is an

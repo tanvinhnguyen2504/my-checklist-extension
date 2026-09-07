@@ -2,18 +2,19 @@ import {
   THEME,
   countDone,
   formatDayKeyShort,
+  isAllDone,
   isDayKey,
   loadState,
   PRIORITY_LABELS,
   PRIORITY_ORDER,
   groupByDay,
   todayKey,
-  markAllDone,
   moveItem,
   nextTheme,
   parseDraft,
   progressPercent,
   saveState,
+  setAllDone,
   touchItem,
 } from "./utils.js";
 import { createDragController } from "./drag-drop.js";
@@ -174,8 +175,13 @@ function disarmClear() {
 
 function renderActions() {
   const isEmpty = !state.items.length;
-  checkAllButtonEl.disabled =
-    isEmpty || countDone(state.items) === state.items.length;
+  // One button, two directions: once everything is ticked the only useful move
+  // is to untick it, so the button flips rather than going dead.
+  const allDone = isAllDone(state.items);
+  checkAllButtonEl.disabled = isEmpty;
+  checkAllButtonEl.textContent = allDone ? "\u2715 UNMARK ALL" : "\u2713 MARK ALL";
+  checkAllButtonEl.title = allDone ? "Clear every tick" : "Mark everything done";
+  checkAllButtonEl.dataset.allDone = String(allDone);
   clearAllButtonEl.disabled = isEmpty;
   clearAllButtonEl.textContent = clearArmed ? "SURE?" : "CLEAR";
   clearAllButtonEl.dataset.armed = String(clearArmed);
@@ -359,7 +365,7 @@ function handleEventListner() {
     }
   });
   checkAllButtonEl.addEventListener("click", () => {
-    state.items = markAllDone(state.items);
+    state.items = setAllDone(state.items, !isAllDone(state.items));
     disarmClear();
     saveAndRender();
   });
