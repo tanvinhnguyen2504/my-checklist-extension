@@ -1,20 +1,23 @@
 import {
   THEME,
   countDone,
+  isAllDone,
   loadState,
-  PRIORITY_LABELS,
-  PRIORITY_ORDER,
   groupByDay,
   todayKey,
-  markAllDone,
   moveItem,
   nextTheme,
   parseDraft,
   progressPercent,
   saveState,
+  setAllDone,
   touchItem,
 } from "./utils.js";
 import { createDragController } from "./drag-drop.js";
+import { closeMenu, installMenuDismissal } from "./menu.js";
+import { attachPriorityTag } from "./priority.js";
+import { attachDueChip } from "./due-date.js";
+import { downloadCsv } from "./export.js";
 
 const listEl = document.getElementById("list");
 const rowTemplate = document.getElementById("row-tpl");
@@ -25,8 +28,8 @@ const themeButton = document.getElementById("theme");
 const themeLabelEl = document.getElementById("theme-label");
 const checkAllButtonEl = document.getElementById("btn-check-all");
 const clearAllButtonEl = document.getElementById("btn-clear-all");
+const exportButtonEl = document.getElementById("btn-export-csv");
 const addButton = document.getElementById("add");
-const priorityMenuEl = document.getElementById("priority-menu");
 const groupTemplate = document.getElementById("group-tpl");
 
 const CLEAR_CONFIRM_MS = 3000;
@@ -34,8 +37,22 @@ const CLEAR_CONFIRM_MS = 3000;
 let state = { items: [], theme: THEME.LIGHT };
 let clearArmed = false;
 let clearTimer = null;
-let menuAnchorEl = null;
-let openMenuEl = null;
+// The pointer press that dismisses an open editor also completes as a click,
+// and that click lands on .body -- which would toggle the row off the back of
+// a gesture the user meant as "close the editor". Holds the element that press
+// landed on, so the click it produces can be ignored exactly once.
+let editorDismissedBy = null;
+
+// True when `event` is the click completing the press that just dismissed an
+// editor. Matching on the pressed element rather than on a timer is deliberate:
+// the gap between mousedown and click is however long the user holds the
+// button, which no timeout can bound.
+function consumeEditorDismissal(event) {
+  if (!editorDismissedBy) return false;
+  const pressedEl = editorDismissedBy;
+  editorDismissedBy = null;
+  return event.target === pressedEl || event.target.contains(pressedEl);
+}
 
 function renderEmptyState() {
   const empty = document.createElement("div");
@@ -51,35 +68,44 @@ function renderEmptyState() {
   listEl.append(empty);
 }
 
+// Controls inside .body that must not fall through to the done-toggle below.
+const BODY_CONTROLS = ".del, .text, .tag, .due";
+
 function renderRow(item, index, dayKey) {
   const row = rowTemplate.content.firstElementChild.cloneNode(true);
   row.dataset.priority = String(item.priority);
   row.dataset.done = String(item.done);
-  row.querySelector(".text").textContent = item.text;
   row.querySelector(".box").textContent = item.done ? "✓" : "";
-  row.querySelector(".tag").textContent = PRIORITY_LABELS[item.priority];
+
+  const textEl = row.querySelector(".text");
+  textEl.textContent = item.text;
+  // The label is a single ellipsised line, so the full text is only ever
+  // readable from the tooltip.
+  textEl.title = item.text;
+
+  attachPriorityTag(row.querySelector(".tag"), item, (priority) => {
+    touchItem(item).priority = priority;
+    saveAndRender();
+  });
+  attachDueChip(row.querySelector(".due"), row.querySelector(".due-input"), item, (dayKey) => {
+    assignDay(index, dayKey);
+    saveAndRender();
+  });
 
   row.querySelector(".body").addEventListener("click", (event) => {
-    if (event.target.closest(".del")) return;
+    if (consumeEditorDismissal(event)) return;
     // The text label is the edit target (double-click); toggling it here would
-    // re-render the row before dblclick could fire.
-    if (event.target.closest(".text")) return;
+    // re-render the row before dblclick could fire. The rest are controls with
+    // their own handlers.
+    if (event.target.closest(BODY_CONTROLS)) return;
     item.done = !item.done;
     touchItem(item);
     saveAndRender();
   });
-  row.querySelector(".text").addEventListener("dblclick", () => {
+  textEl.addEventListener("dblclick", () => {
     startEditing(row, item);
   });
 
-  const flagEl = row.querySelector(".flag");
-  flagEl.addEventListener("click", () => {
-    if (menuAnchorEl === flagEl) {
-      closeMenu();
-      return;
-    }
-    openPriorityMenu(flagEl, index);
-  });
   row.querySelector(".del").addEventListener("click", () => {
     state.items.splice(index, 1);
     saveAndRender();
@@ -136,9 +162,15 @@ function disarmClear() {
 
 function renderActions() {
   const isEmpty = !state.items.length;
-  checkAllButtonEl.disabled =
-    isEmpty || countDone(state.items) === state.items.length;
+  // One button, two directions: once everything is ticked the only useful move
+  // is to untick it, so the button flips rather than going dead.
+  const allDone = isAllDone(state.items);
+  checkAllButtonEl.disabled = isEmpty;
+  checkAllButtonEl.textContent = allDone ? "\u2715 UNMARK ALL" : "\u2713 MARK ALL";
+  checkAllButtonEl.title = allDone ? "Clear every tick" : "Mark everything done";
+  checkAllButtonEl.dataset.allDone = String(allDone);
   clearAllButtonEl.disabled = isEmpty;
+  exportButtonEl.disabled = isEmpty;
   clearAllButtonEl.textContent = clearArmed ? "SURE?" : "CLEAR";
   clearAllButtonEl.dataset.armed = String(clearArmed);
 }
@@ -155,10 +187,18 @@ function startEditing(row, item) {
 
   dragController.suspendRow(row);
 
+  // Capture phase, so this runs before the press's default action moves focus
+  // and blurs the input -- i.e. before settle() below.
+  const notePress = (event) => {
+    if (!input.contains(event.target)) editorDismissedBy = event.target;
+  };
+  document.addEventListener("mousedown", notePress, true);
+
   let settled = false;
   const settle = (commit) => {
     if (settled) return;
     settled = true;
+    document.removeEventListener("mousedown", notePress, true);
 
     const nextText = input.value.trim();
     if (commit && nextText && nextText !== item.text) {
@@ -180,97 +220,6 @@ function startEditing(row, item) {
   textEl.replaceWith(input);
   input.focus();
   input.select();
-}
-
-function closeMenu() {
-  if (!menuAnchorEl) return;
-  menuAnchorEl.setAttribute("aria-expanded", "false");
-  menuAnchorEl = null;
-  openMenuEl.hidden = true;
-  openMenuEl.textContent = "";
-  openMenuEl = null;
-}
-
-function buildMenuItem({ label, priority = null, checked = false, onPick }) {
-  const item = document.createElement("button");
-  item.type = "button";
-  item.className = "menu-item";
-  item.role = "menuitemradio";
-  item.setAttribute("aria-checked", String(checked));
-
-  if (priority !== null) {
-    item.dataset.priority = String(priority);
-    const dot = document.createElement("span");
-    dot.className = "menu-dot";
-    item.append(dot);
-  }
-
-  const labelEl = document.createElement("span");
-  labelEl.className = "menu-label";
-  labelEl.textContent = label;
-
-  const check = document.createElement("span");
-  check.className = "menu-check";
-  check.textContent = "\u2713";
-
-  item.append(labelEl, check);
-  item.addEventListener("click", onPick);
-  return item;
-}
-
-// Anchors the menu to its trigger, flipping above when there is no room below.
-// Fixed positioning so the scrolling list cannot clip it.
-function positionMenu(menuEl, anchorEl) {
-  const anchor = anchorEl.getBoundingClientRect();
-  const menu = menuEl.getBoundingClientRect();
-  const margin = 6;
-
-  const fitsBelow = anchor.bottom + menu.height + margin <= window.innerHeight;
-  const top = fitsBelow ? anchor.bottom + 2 : anchor.top - menu.height - 2;
-  const left = Math.min(anchor.left, window.innerWidth - menu.width - margin);
-
-  menuEl.style.top = `${Math.max(margin, top)}px`;
-  menuEl.style.left = `${Math.max(margin, left)}px`;
-}
-
-function openMenu(menuEl, anchorEl, entries) {
-  closeMenu();
-
-  entries.forEach((entry) => menuEl.append(buildMenuItem(entry)));
-
-  menuAnchorEl = anchorEl;
-  openMenuEl = menuEl;
-  anchorEl.setAttribute("aria-expanded", "true");
-  menuEl.hidden = false;
-  positionMenu(menuEl, anchorEl);
-
-  const items = [...menuEl.querySelectorAll(".menu-item")];
-  (items.find((el) => el.getAttribute("aria-checked") === "true") || items[0]).focus();
-}
-
-function openPriorityMenu(anchorEl, index) {
-  const current = state.items[index].priority;
-  openMenu(
-    priorityMenuEl,
-    anchorEl,
-    PRIORITY_ORDER.map((priority) => ({
-      label: PRIORITY_LABELS[priority],
-      priority,
-      checked: priority === current,
-      onPick: () => {
-        touchItem(state.items[index]).priority = priority;
-        closeMenu();
-        saveAndRender();
-      },
-    }))
-  );
-}
-
-function moveMenuFocus(step) {
-  const items = [...openMenuEl.querySelectorAll(".menu-item")];
-  const current = items.indexOf(document.activeElement);
-  const next = (current + step + items.length) % items.length;
-  items[next].focus();
 }
 
 function setTheme() {
@@ -313,7 +262,7 @@ function addItem() {
   saveAndRender();
 }
 
-function handleEventListner() {
+function handleEventListener() {
   addButton.addEventListener("click", addItem);
   draftEl.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
@@ -321,7 +270,7 @@ function handleEventListner() {
     }
   });
   checkAllButtonEl.addEventListener("click", () => {
-    state.items = markAllDone(state.items);
+    state.items = setAllDone(state.items, !isAllDone(state.items));
     disarmClear();
     saveAndRender();
   });
@@ -339,33 +288,24 @@ function handleEventListner() {
     state.items = [];
     saveAndRender();
   });
-  document.addEventListener("keydown", (event) => {
-    if (!menuAnchorEl) return;
-    if (event.key === "Escape") {
-      const anchorEl = menuAnchorEl;
-      closeMenu();
-      anchorEl.focus();
-    } else if (event.key === "ArrowDown") {
-      event.preventDefault();
-      moveMenuFocus(1);
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      moveMenuFocus(-1);
-    }
-  });
-  document.addEventListener("pointerdown", (event) => {
-    if (!menuAnchorEl) return;
-    if (openMenuEl.contains(event.target) || event.target === menuAnchorEl) return;
-    closeMenu();
+  // Backstop: a press that dismissed an editor without producing a click on a
+  // row (pressing the header, say) would otherwise leave the flag set and eat
+  // the next genuine click. document is above .body, so this runs after it.
+  document.addEventListener("click", () => {
+    editorDismissedBy = null;
   });
   listEl.addEventListener("scroll", closeMenu);
+  exportButtonEl.addEventListener("click", () => {
+    downloadCsv(state.items);
+  });
   themeButton.addEventListener("click", () => {
     state.theme = nextTheme(state.theme);
     saveAndRender();
   });
 }
 
-handleEventListner()
+installMenuDismissal();
+handleEventListener();
 
 loadState().then((savedState) => {
   state = savedState;

@@ -78,7 +78,11 @@ export function parseDraft(rawText) {
 }
 
 // Menu order: most urgent first. Drives both the popover and its labels.
-export const PRIORITY_ORDER = [PRIORITY.HIGH, PRIORITY.NORMAL, PRIORITY.LOW];
+export const PRIORITY_ORDER = [
+  PRIORITY.HIGH,
+  PRIORITY.NORMAL,
+  PRIORITY.LOW,
+];
 
 export const PRIORITY_LABELS = {
   [PRIORITY.HIGH]: "HIGH",
@@ -122,8 +126,16 @@ export function debounce(fn, wait) {
   };
 }
 
-export function markAllDone(items) {
-  return items.map((item) => (item.done ? item : { ...item, done: true }));
+export function isAllDone(items) {
+  return items.length > 0 && countDone(items) === items.length;
+}
+
+// Drives both halves of the mark-all / unmark-all toggle. Items already in the
+// target state are returned untouched so a no-op cannot move their timestamp.
+export function setAllDone(items, done) {
+  return items.map((item) =>
+    item.done === done ? item : { ...item, done, updatedAt: Date.now() }
+  );
 }
 
 // Moves the item at `from` so it lands before position `to`, where `to` is an
@@ -185,6 +197,14 @@ export function formatDayKey(key) {
   if (!isDayKey(key)) return "";
   const [year, month, day] = key.split("-");
   return `${day}/${month}/${year}`;
+}
+
+// Row-width version of formatDayKey: the year is almost always the current one
+// and the row has no space to spend restating it.
+export function formatDayKeyShort(key) {
+  if (!isDayKey(key)) return "";
+  const [, month, day] = key.split("-");
+  return `${day}/${month}`;
 }
 
 // "TODAY" / "TOMORROW" / "YESTERDAY" / "OVERDUE" read faster than a bare date

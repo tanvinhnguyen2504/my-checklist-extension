@@ -22,6 +22,17 @@
   --pri-medium-ink: oklch(0.52 0.12 85);
   --pri-low: oklch(0.60 0.17 255);
   --pri-low-ink: oklch(0.52 0.15 255);
+  /* Solid priority pills. The background still derives from the same --pri-*
+     token that paints the row's edge strip, so the two cannot drift. Only the
+     text colour is picked per background, to clear WCAG AA (4.5:1) at the
+     pill's 9.5px type: white on red is 4.67, ink on amber 9.48. Plain --pri-low
+     reaches only 3.93 against white, so it is darkened 10% to land at 5.03. */
+  --tag-high-bg: var(--pri-high);
+  --tag-high-fg: var(--surface);
+  --tag-medium-bg: var(--pri-medium);
+  --tag-medium-fg: var(--ink);
+  --tag-low-bg: color-mix(in oklch, var(--pri-low) 90%, black);
+  --tag-low-fg: var(--surface);
 }
 
 html[data-theme="dark"] {
@@ -48,14 +59,27 @@ html[data-theme="dark"] {
   --pri-medium-ink: oklch(0.86 0.13 85);
   --pri-low: oklch(0.70 0.15 255);
   --pri-low-ink: oklch(0.78 0.13 255);
+  /* Dark theme lifts every --pri-* token well above mid-lightness, so the pill
+     text flips to the page background: 6.19 / 10.87 / 6.68. No darkening needed. */
+  --tag-high-bg: var(--pri-high);
+  --tag-high-fg: var(--bg);
+  --tag-medium-bg: var(--pri-medium);
+  --tag-medium-fg: var(--bg);
+  --tag-low-bg: var(--pri-low);
+  --tag-low-fg: var(--bg);
 }
 
 * { box-sizing: border-box; }
 
 body {
   width: 380px;
-  min-height: 520px;
+  /* A fixed height, not a minimum: the header, progress bar and compose row are
+     pinned and .list is the only thing that scrolls. With min-height the popup
+     grew with the list until the browser clipped it and the compose row went
+     out of reach. */
+  height: 520px;
   margin: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   background: var(--bg);
@@ -94,6 +118,9 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ink); }
 .chip:disabled { opacity: 0.35; cursor: default; }
 .chip:disabled:hover { color: var(--dim); }
+/* Icon-only chips carry their meaning in title/aria-label, so they drop the
+   text padding and go square -- the header has no room to spare at 380px. */
+.chip.icon { padding: 0; width: 28px; justify-content: center; font-size: 13px; }
 .chip.danger[data-armed="true"] { color: var(--clay-ink); border-color: var(--clay); }
 
 .row[draggable="true"] { cursor: grab; }
@@ -104,7 +131,10 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .track { height: 3px; background: var(--track); }
 .fill { height: 3px; width: 0; background: var(--teal); transition: width 0.22s ease; }
 
-.list { flex: 1; padding: 4px 0; }
+/* min-height:0 is what actually lets a flex child shrink below its content and
+   scroll; flex:1 alone is not enough. The sticky group headers key off this
+   element being the scroll container. */
+.list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 0; }
 
 .row { display: flex; align-items: stretch; min-height: 44px; border-bottom: 1px solid var(--hair); }
 .flag {
@@ -115,7 +145,6 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   transition: width 0.12s ease, background 0.12s ease;
 }
 .row[data-priority="0"]:not([data-done="true"]) .flag { background: var(--pri-low); }
-.flag:hover, .flag[aria-expanded="true"] { width: 14px; background: var(--dash); }
 .row[data-priority="2"]:not([data-done="true"]) .flag { background: var(--pri-high); }
 .row[data-priority="1"]:not([data-done="true"]) .flag { background: var(--pri-medium); }
 
@@ -166,28 +195,49 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
 .tag {
   flex: none;
-  padding: 2px 5px;
+  padding: 3px 5px;
   border-radius: 4px;
   font: 500 9.5px/1 Arial, sans-serif;
   letter-spacing: 0.06em;
 }
+.tag:hover, .tag[aria-expanded="true"] { filter: brightness(0.92); }
 
-/* The pill tints itself from the same token that paints the row's edge strip,
-   so the two can never drift apart. */
-.row[data-priority="2"] .tag {
-  color: var(--pri-high-ink);
-  background: color-mix(in oklch, var(--pri-high) 18%, transparent);
+/* The due chip is deliberately quieter than the priority pill -- it is a date,
+   not a state, and it should not compete with the task text. */
+.due {
+  flex: none;
+  padding: 3px 5px;
+  border-radius: 4px;
+  font: 500 9.5px/1 Arial, sans-serif;
+  letter-spacing: 0.06em;
+  color: var(--dim);
+  background: var(--chip);
 }
-.row[data-priority="1"] .tag {
-  color: var(--pri-medium-ink);
-  background: color-mix(in oklch, var(--pri-medium) 26%, transparent);
-}
-.row[data-priority="0"] .tag {
-  color: var(--pri-low-ink);
-  background: color-mix(in oklch, var(--pri-low) 18%, transparent);
+.due:hover { color: var(--ink); }
+.due[data-unset="true"] { color: var(--clay-ink); background: transparent; box-shadow: inset 0 0 0 1px var(--dash); }
+.row[data-done="true"] .due { color: var(--soft); }
+
+/* Present but invisible: showPicker() needs a real, rendered input. It sits
+   outside .body because .body's 11px gap would reserve a column for it even at
+   zero width; .row has no gap, so here it costs nothing and still anchors the
+   calendar to the right-hand end of the row where the chip is. */
+.due-input {
+  flex: none;
+  width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
-/* A completed task's priority stops mattering; the pill steps back. */
+.row[data-priority="2"] .tag { color: var(--tag-high-fg); background: var(--tag-high-bg); }
+.row[data-priority="1"] .tag { color: var(--tag-medium-fg); background: var(--tag-medium-bg); }
+.row[data-priority="0"] .tag { color: var(--tag-low-fg); background: var(--tag-low-bg); }
+
+/* A completed task's priority stops mattering; the pill steps back. This has
+   the same specificity as the three rules above and MUST stay below them --
+   swapping the order silently leaves finished rows shouting in full colour. */
 .row[data-done="true"] .tag { color: var(--soft); background: var(--hair); }
 
 .del { flex: none; width: 20px; height: 20px; border-radius: 5px; font-size: 15px; color: var(--dim); opacity: 0; }

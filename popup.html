@@ -13,6 +13,7 @@
   </div>
   <button id="btn-check-all" class="chip" type="button" title="Mark everything done">&check; MARK ALL</button>
   <button id="btn-clear-all" class="chip danger" type="button" title="Remove every item">CLEAR</button>
+  <button id="btn-export-csv" class="chip icon" type="button" title="Download the list as CSV" aria-label="Download the list as CSV">&darr;</button>
   <button id="theme" class="chip" type="button" title="Toggle light / dark">
     <span class="dot"></span><span id="theme-label">LIGHT</span>
   </button>
@@ -28,9 +29,11 @@
     <div class="body">
       <button class="box" type="button" title="Toggle done"></button>
       <span class="text"></span>
-      <span class="tag"></span>
+      <button class="due" type="button" title="Change date"></button>
+      <button class="tag" type="button" title="Set priority" aria-haspopup="menu" aria-expanded="false"></button>
       <button class="del" type="button" title="Delete">&times;</button>
     </div>
+    <input class="due-input" type="date" tabindex="-1" aria-hidden="true">
   </div>
 </template>
 
@@ -48,7 +51,7 @@
 
 <footer class="compose">
   <input id="draft" type="text" placeholder="Add an item, Enter to save" autocomplete="off" spellcheck="false">
-  <button id="add" class="enter" type="button" title="Add">&crarr;</button>
+  <button id="add" class="enter" type="button" title="Add">Enter &crarr;</button>
 </footer>
 
 <script type="module" src="popup.js"></script>
