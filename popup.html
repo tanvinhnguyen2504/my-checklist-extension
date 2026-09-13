@@ -28,6 +28,14 @@
     <span class="setting-label" id="set-width-label">Wide mode<span class="setting-hint">Widen the popup and show the full task text</span></span>
     <button id="set-width" class="switch" type="button" role="switch" aria-checked="false" aria-labelledby="set-width-label"><span class="knob"></span></button>
   </div>
+  <div class="setting">
+    <span class="setting-label" id="set-reminder-label">Daily reminder<span class="setting-hint">Opens a window listing your high-priority tasks</span></span>
+    <button id="set-reminder" class="switch" type="button" role="switch" aria-checked="false" aria-labelledby="set-reminder-label"><span class="knob"></span></button>
+  </div>
+  <div class="setting" id="set-reminder-time-row" hidden>
+    <span class="setting-label" id="set-reminder-time-label">Remind me at</span>
+    <input id="set-reminder-time" class="time" type="time" aria-labelledby="set-reminder-time-label">
+  </div>
 </section>
 
 <main id="list" class="list"></main>

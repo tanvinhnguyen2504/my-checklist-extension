@@ -1,4 +1,5 @@
 import {
+  STORAGE_KEY,
   countDone,
   isAllDone,
   loadState,
@@ -10,6 +11,7 @@ import {
   normalizeState,
   parseDraft,
   progressPercent,
+  isTimeOfDay,
   saveState,
   setAllDone,
   touchItem,
@@ -319,7 +321,39 @@ installSettings({
     state.settings.width = nextWidth(state.settings.width);
     saveAndRender();
   },
+  onToggleReminder: () => {
+    state.settings.reminder.enabled = !state.settings.reminder.enabled;
+    saveAndRender();
+  },
+  onPickReminderTime: (time) => {
+    // The control can be cleared, which reports "". Keep the last good time
+    // rather than writing a value the service worker cannot schedule.
+    if (!isTimeOfDay(time)) {
+      return;
+    }
+    state.settings.reminder.time = time;
+    saveAndRender();
+  },
 });
+
+// The reminder window writes to the same storage key, and loadState()'s .then
+// replaces `state` wholesale -- without this, ticking an item there would be
+// undone by the popup's next save.
+if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.onChanged) {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local" || !changes[STORAGE_KEY]) {
+      return;
+    }
+    const incoming = normalizeState(changes[STORAGE_KEY].newValue);
+    // Fires for this popup's own writes too. Re-rendering then would destroy an
+    // open inline editor for nothing, so act only on a real difference.
+    if (JSON.stringify(incoming) === JSON.stringify(state)) {
+      return;
+    }
+    state = incoming;
+    render();
+  });
+}
 handleEventListener();
 
 loadState().then((savedState) => {

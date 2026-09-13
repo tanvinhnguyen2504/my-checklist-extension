@@ -15,6 +15,9 @@ let panelEl = null;
 let triggerEl = null;
 let themeSwitchEl = null;
 let widthSwitchEl = null;
+let reminderSwitchEl = null;
+let reminderTimeEl = null;
+let reminderTimeRowEl = null;
 
 export function isSettingsOpen() {
   return panelEl !== null && !panelEl.hidden;
@@ -38,17 +41,39 @@ function toggleSettings() {
 export function renderSettings(state) {
   themeSwitchEl.setAttribute("aria-checked", String(state.theme === THEME.DARK));
   widthSwitchEl.setAttribute("aria-checked", String(state.settings.width === WIDTH.WIDE));
+
+  const { enabled, time } = state.settings.reminder;
+  reminderSwitchEl.setAttribute("aria-checked", String(enabled));
+  // A time with no reminder to attach it to is just clutter.
+  reminderTimeRowEl.hidden = !enabled;
+  // Assigning unconditionally would fight the user mid-edit, because an
+  // <input type="time"> reports a change per field as it is filled in.
+  if (reminderTimeEl.value !== time) reminderTimeEl.value = time;
 }
 
-export function installSettings({ panel, trigger, onToggleTheme, onToggleWidth }) {
+export function installSettings({
+  panel,
+  trigger,
+  onToggleTheme,
+  onToggleWidth,
+  onToggleReminder,
+  onPickReminderTime,
+}) {
   panelEl = panel;
   triggerEl = trigger;
   themeSwitchEl = panel.querySelector("#set-theme");
   widthSwitchEl = panel.querySelector("#set-width");
+  reminderSwitchEl = panel.querySelector("#set-reminder");
+  reminderTimeEl = panel.querySelector("#set-reminder-time");
+  reminderTimeRowEl = panel.querySelector("#set-reminder-time-row");
 
   triggerEl.addEventListener("click", toggleSettings);
   themeSwitchEl.addEventListener("click", onToggleTheme);
   widthSwitchEl.addEventListener("click", onToggleWidth);
+  reminderSwitchEl.addEventListener("click", onToggleReminder);
+  // "change" rather than "input": input fires on every field of the time control,
+  // so it would report half-typed times like "0:30".
+  reminderTimeEl.addEventListener("change", () => onPickReminderTime(reminderTimeEl.value));
 
   // Escape closes the panel, matching how the priority menu already behaves.
   // The menu installs its own Escape handler and returns early when no menu is

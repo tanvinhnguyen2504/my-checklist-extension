@@ -138,8 +138,12 @@ export function nextWidth(width) {
   return width === WIDTH.WIDE ? WIDTH.COMPACT : WIDTH.WIDE;
 }
 
+// The `typeof window` guard is load-bearing: background.js imports this module,
+// and a service worker has no window at all. Without it, normalizeState() throws
+// a ReferenceError inside the worker on the empty-storage path.
 export function preferredTheme() {
   const prefersDark =
+    typeof window !== "undefined" &&
     window.matchMedia &&
     window.matchMedia("(prefers-color-scheme: dark)").matches;
   return prefersDark ? THEME.DARK : THEME.LIGHT;
@@ -168,6 +172,24 @@ export function debounce(fn, wait) {
     }, wait);
     if (isIdle) fn(...args);
   };
+}
+
+// What the reminder is for: work that is flagged HIGH and still outstanding.
+// Anything done no longer needs reminding about.
+export function highPriorityItems(items) {
+  return items.filter((item) => item.priority === PRIORITY.HIGH && !item.done);
+}
+
+// Epoch ms of the next time the clock reads `time` ("HH:MM"). Today if that is
+// still ahead, otherwise tomorrow. Local time throughout -- a reminder at 09:00
+// means 09:00 where the user is, which is the same reasoning that makes dueDate a
+// day key rather than a timestamp.
+export function nextReminderTime(time, from = new Date()) {
+  const [hours, minutes] = time.split(":").map(Number);
+  const next = new Date(from);
+  next.setHours(hours, minutes, 0, 0);
+  if (next.getTime() <= from.getTime()) next.setDate(next.getDate() + 1);
+  return next.getTime();
 }
 
 export function isAllDone(items) {

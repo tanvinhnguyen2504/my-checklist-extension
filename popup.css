@@ -193,6 +193,32 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 }
 .switch[aria-checked="true"] .knob { left: 18px; }
 
+.setting[hidden] { display: none; }
+
+.time {
+  flex: none;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--chip);
+  font: 500 11px/1 Arial, sans-serif;
+  color: var(--ink);
+}
+
+/* The reminder window is sized by chrome.windows.create, so it fills whatever it
+   is given instead of the popup's fixed 380x520. Its rows always wrap: the window
+   is wide enough, and a reminder you cannot fully read is not a reminder. */
+body.reminder { width: auto; height: 100vh; }
+body.reminder .text {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  cursor: default;
+}
+body.reminder .row { cursor: default; }
+body.reminder .compose { justify-content: flex-end; }
+
 /* min-height:0 is what actually lets a flex child shrink below its content and
    scroll; flex:1 alone is not enough. The sticky group headers key off this
    element being the scroll container. */

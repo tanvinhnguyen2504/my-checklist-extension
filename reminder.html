@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>High priority</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body class="reminder">
+<header class="bar">
+  <div class="titles">
+    <div class="title">High priority today!</div>
+    <div class="sub"><span id="reminder-count">0</span> still outstanding</div>
+  </div>
+</header>
+
+<main id="reminder-list" class="list"></main>
+
+<footer class="compose">
+  <button id="btn-dismiss" class="chip" type="button" title="Close this reminder">DISMISS</button>
+</footer>
+
+<script type="module" src="reminder.js"></script>
+</body>
+</html>
