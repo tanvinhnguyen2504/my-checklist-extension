@@ -36,6 +36,7 @@ order — but review them as commits.
 | 2 | `feat(settings): add a settings panel and persist its state` | `utils.js`, `popup.html`, `popup.css`, `popup.js`, `settings.js` |
 | 3 | `feat(settings): add a wide mode that shows the full task text` | `utils.js`, `popup.css`, `popup.html`, `settings.js` |
 | 4 | `feat(reminder): open a daily reminder for high-priority tasks` | `manifest.json`, `background.js`, `reminder.html`, `reminder.js`, `utils.js`, `popup.js`, `popup.css` |
+| 5 | `feat(row): reorder the list by priority when one changes` | `utils.js`, `popup.js`, `README.md` |
 
 This matches the existing history's style — `feat(export): …`,
 `refactor: …`, `fix(row): …` — so keep the `type(scope): lowercase subject` form.
@@ -50,6 +51,9 @@ into any feature commit:
 
 - the non-functional `.priority-label` block in `popup.css` (`1px solidr`,
   `font-size: 12rem`)
+- the dead `.flag` button in `popup.html`, which carries `title="Set priority"`
+  but is never queried in any JS file — and the `README.md` line that documents it
+  as the way to set a priority
 - the exported-but-unused `debounce()` and `formatDate()` in `utils.js`
 - the stale `INSTALL.md`
 - the missing `isComposing` guard on the draft input (the suspected Telex

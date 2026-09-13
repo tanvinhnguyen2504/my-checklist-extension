@@ -1,15 +1,16 @@
-# Plan: Today-First Ordering, Wide Mode, and a Settings Panel with Scheduled HIGH Reminders
+# Plan: Today-First Ordering, Wide Mode, a Settings Panel with Scheduled HIGH Reminders, and Priority Reordering
 
 ## Goal
 
-Four changes to the popup checklist, in increasing order of blast radius: put
+Five changes to the popup checklist, in increasing order of blast radius: put
 TODAY at the top of the list so the day you care about needs no scrolling; let
 the popup widen so long task text is fully readable; introduce a settings panel
 as the home for preferences that are not part of the list itself; and add a
 scheduled reminder that surfaces only HIGH-priority items in a centered window.
-The last of these is the only one that changes what the extension *is* — it adds
+The fourth of these is the only one that changes what the extension *is* — it adds
 a background service worker and a second HTML page, so the extension keeps
-running when the popup is closed.
+running when the popup is closed. A fifth, smaller change then resorts the list
+HIGH → MEDIUM → LOW whenever a task's priority is changed.
 
 ## Scope
 
@@ -20,15 +21,23 @@ running when the popup is closed.
 - A settings panel, persisted in state, hosting the theme switch and the width
   switch.
 - A daily scheduled reminder window listing only `PRIORITY.HIGH`, not-done items.
+- Resorting the list HIGH → MEDIUM → LOW when a task's priority changes.
 - Splitting the finished work into separately reviewable commits.
 
 **Out of scope**
 
 - Any change to the drag-and-drop contract. `drag-drop.js` addresses items by
-  index into `state.items`, which group ordering does not touch.
+  index into `state.items`, which neither group ordering nor the priority resort
+  touches.
+- Making priority order an *invariant* of the list. The resort fires when a
+  priority changes; manual drag order is otherwise preserved.
+- Sorting on add, or sinking done tasks to the bottom of their group. Both are
+  named in Open questions.
 - Pre-existing dead code: `debounce()` and `formatDate()` in `utils.js`, the
-  broken `.priority-label` block in `popup.css` (typo'd `solidr`, `12rem`), and
-  the stale `INSTALL.md`. These are named in Open questions, not changed.
+  broken `.priority-label` block in `popup.css` (typo'd `solidr`, `12rem`), the
+  dead `.flag` button in `popup.html` (it carries `title="Set priority"` but is
+  never queried in any JS file), and the stale `INSTALL.md`. These are named in
+  Open questions, not changed.
 - Notifications via `chrome.notifications`, a second reminder per day, snooze,
   per-item reminders, or reminders for non-HIGH priorities.
 - A storage schema version bump. `normalizeState()` already applies defaults to
@@ -76,6 +85,14 @@ schedule. The reminder is therefore:
 whereas creating a centered popup window is stable, literally matches "a dialog
 in the middle", and needs no extra permission beyond `alarms`.
 
+**The priority resort needs no per-group logic.** `groupByDay()` orders the
+*sections* by day and renders each section's items in array order, so array order
+is only ever observable *within* a section. One stable sort of the flat array
+therefore leaves every group internally priority-ordered, with equal-priority
+items keeping their relative order — verified against the real `groupByDay` before
+planning it. The rank comes from `PRIORITY_ORDER` rather than the raw constants, so
+list order and menu order cannot drift.
+
 **The reminder page is read-mostly.** It lists HIGH items and lets you tick them
 done — nothing else. It shares `utils.js` for load/save and `popup.css` for
 tokens, but it does **not** import `popup.js`; `popup.js` reaches for
@@ -96,7 +113,11 @@ listener in `popup.js` that re-reads and re-renders — not a general sync layer
 | 2 | `plan-2-settings-state-and-panel.md` | `settings` in state + a settings panel; the existing theme switch moves into it |
 | 3 | `plan-3-wide-mode-full-text.md` | A width switch in settings that widens the popup and wraps task text |
 | 4 | `plan-4-scheduled-high-priority-reminder.md` | Service worker, `chrome.alarms`, and a centered reminder window listing HIGH items |
-| 5 | `plan-5-split-into-reviewable-commits.md` | The work split into one self-contained commit per phase |
+| 5 | `plan-6-reorder-by-priority-on-change.md` | Changing a task's priority resorts its day HIGH → MEDIUM → LOW |
+| 6 | `plan-5-split-into-reviewable-commits.md` | The work split into one self-contained commit per phase |
+
+Filename note: `plan-5-…` keeps its name because it is already committed and
+referenced elsewhere; it now runs last, after `plan-6-…`.
 
 ## Success criteria
 
@@ -116,6 +137,12 @@ listener in `popup.js` that re-reads and re-renders — not a general sync layer
   disabled, no alarm exists (`chrome.alarms.getAll()` returns none).
 - Ticking an item in the reminder window is reflected in the popup on its next
   open.
+- With a day holding LOW, MEDIUM and HIGH tasks, changing the last one to HIGH
+  moves *that* row to the top of its group, leaves every other task's `updatedAt`
+  untouched, and leaves the `×` and checkbox on every row still addressing the
+  task they are drawn beside.
+- A task dragged out of priority order stays there across a popup reopen — the
+  resort fires on a priority change, not on render.
 - `git log --oneline` shows one commit per phase, each one building and loading
   in `chrome://extensions` on its own, and no commit contains a change unrelated
   to its phase.
@@ -136,7 +163,19 @@ listener in `popup.js` that re-reads and re-renders — not a general sync layer
    and a different alarm setup.
 4. **What happens when there are no HIGH items at reminder time?** Planned: the
    window does not open at all, since an empty reminder is pure interruption.
-5. **"Ignore the messy or unnecessary code"** is read as *keep unrelated cleanup
+5. **Should the resort be an invariant instead of an event?** Planned as an effect
+   of changing a priority, which is what you asked for and which leaves
+   drag-to-reorder working. Sorting inside `render()` instead would keep the list
+   permanently priority-ordered, but would make dragging a row within a day
+   pointless — the next render would discard it. The two are mutually exclusive.
+6. **Should adding `!urgent` sort too?** `parseDraft()` is a separate path that
+   pushes new items onto the end, so a new HIGH task lands at the bottom of today
+   while an existing task promoted to HIGH jumps to the top. Not planned, because
+   adding is not updating — but it will look like a bug.
+7. **Should done tasks sink?** They sort purely by priority, so a completed HIGH
+   task still outranks an outstanding LOW one. Adding `done` as the first sort key
+   is a two-line change if you want it.
+8. **"Ignore the messy or unnecessary code"** is read as *keep unrelated cleanup
    out of the review commits*, matching the surgical-changes rule. If you meant
    the opposite — clean it up as part of this work — the `.priority-label` CSS
    block is non-functional (`1px solidr`, `font-size: 12rem`) and
