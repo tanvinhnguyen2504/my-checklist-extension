@@ -114,8 +114,9 @@ also write the year: `@12/09/2026`.
 ### Days
 
 New tasks are assigned to **today** unless you type an `@day` token. Tasks are
-grouped under the day they are assigned to, oldest first, so anything
-**OVERDUE** sits at the top where you cannot miss it.
+grouped under the day they are assigned to, with **TODAY** first so it needs no
+scrolling, then anything **OVERDUE**, then what is coming up, then tasks with no
+day at all.
 
 To move a task to a different day, drag it onto that day's heading.
 
@@ -125,13 +126,24 @@ To move a task to a different day, drag it onto that day's heading.
 | --- | --- |
 | Tick a task off | Click the checkbox (the task's text is for editing instead) |
 | Rename a task | Double-click its text, then Enter to save (Escape cancels) |
-| Set priority | Click the coloured strip on the left edge of the row |
+| Set priority | Click the priority pill on the row, then pick a level. The day resorts HIGH → MEDIUM → LOW |
 | Reorder tasks | Drag a row up or down |
 | Move to another day | Drag a row onto that day's heading |
 | Delete one task | Hover the row and click the `×` |
 | Tick everything off | **✓ ALL** in the header |
 | Delete everything | **CLEAR** in the header, then click again to confirm |
-| Switch light/dark | The **LIGHT** / **DARK** chip in the header |
+| Open settings | The **⚙** chip in the header |
+| Switch light/dark | **Dark mode** in settings |
+| Read long task text | **Wide mode** in settings widens the popup and wraps the text |
+| Get a daily nudge | **Daily reminder** in settings, plus the time to fire it |
+
+### Daily reminder
+
+With **Daily reminder** switched on, a small window opens in the middle of your
+screen at the time you chose, listing only the tasks flagged **HIGH** that are
+still outstanding. Tick them off there or press **Escape** to dismiss it.
+
+If nothing high priority is outstanding at that time, no window opens.
 
 ---
 
@@ -179,8 +191,9 @@ Expected. Temporary add-ons do not survive a restart; repeat Step 2.
 
 ## Privacy
 
-The extension requests one permission: `storage`. It has no host permissions and
-makes no network requests, so your tasks never leave your machine.
+The extension requests two permissions: `storage`, and `alarms` for the daily
+reminder. It has no host permissions and makes no network requests, so your tasks
+never leave your machine.
 
 ---
 
@@ -188,9 +201,12 @@ makes no network requests, so your tasks never leave your machine.
 
 | File | What it holds |
 | --- | --- |
-| `manifest.json` | Manifest V3 definition, `storage` permission only |
-| `popup.html` | Popup markup, row and group templates |
+| `manifest.json` | Manifest V3 definition, `storage` and `alarms` permissions |
+| `popup.html` | Popup markup, row and group templates, settings panel |
 | `popup.css` | Theme tokens, light/dark via `data-theme` |
 | `popup.js` | DOM rendering and event wiring |
+| `settings.js` | The settings panel and its controls |
 | `utils.js` | Storage, date and grouping logic, with no DOM access |
+| `background.js` | Service worker: owns the reminder alarm |
+| `reminder.html`, `reminder.js` | The daily reminder window |
 | `icons/` | Toolbar icons at 16 / 32 / 48 / 128 px |

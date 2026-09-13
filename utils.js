@@ -11,6 +11,22 @@ export const THEME = {
   DARK: "dark",
 };
 
+export const WIDTH = {
+  COMPACT: "compact",
+  WIDE: "wide",
+};
+
+// Preferences that are not part of the list itself. `theme` is deliberately NOT
+// in here: it predates this object, and moving it would reset the saved theme
+// for everyone already using the extension.
+export const DEFAULT_SETTINGS = {
+  width: WIDTH.COMPACT,
+  reminder: {
+    enabled: false,
+    time: "09:00",
+  },
+};
+
 const hasChromeStorage =
   typeof chrome !== "undefined" && chrome.storage && chrome.storage.local;
 
@@ -40,10 +56,33 @@ export function saveState(state) {
   } catch (_) {}
 }
 
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+// A reminder time is a local "HH:MM" string for the same reason dueDate is a day
+// key: it is a time of day, not an instant, and <input type="time"> reads and
+// writes exactly this format.
+export function isTimeOfDay(value) {
+  return typeof value === "string" && TIME_PATTERN.test(value);
+}
+
+// Always returns a complete settings object. Callers must never spread a partial
+// saved value into live state -- a half-populated `reminder` would read as
+// undefined at the point it matters and fail silently.
+export function normalizeSettings(saved) {
+  const reminder = (saved && saved.reminder) || {};
+  return {
+    width: saved && saved.width === WIDTH.WIDE ? WIDTH.WIDE : WIDTH.COMPACT,
+    reminder: {
+      enabled: !!reminder.enabled,
+      time: isTimeOfDay(reminder.time) ? reminder.time : DEFAULT_SETTINGS.reminder.time,
+    },
+  };
+}
+
 // Accepts anything read back from storage and returns a usable state object.
 export function normalizeState(saved) {
   if (!saved || !Array.isArray(saved.items)) {
-    return { items: [], theme: preferredTheme() };
+    return { items: [], theme: preferredTheme(), settings: normalizeSettings(null) };
   }
   return {
     items: saved.items.map((item) => ({
@@ -54,6 +93,7 @@ export function normalizeState(saved) {
       dueDate: isDayKey(item.dueDate) ? item.dueDate : null,
     })),
     theme: saved.theme === THEME.DARK ? THEME.DARK : THEME.LIGHT,
+    settings: normalizeSettings(saved.settings),
   };
 }
 
@@ -90,12 +130,37 @@ export const PRIORITY_LABELS = {
   [PRIORITY.LOW]: "LOW",
 };
 
+// Orders the list HIGH -> MEDIUM -> LOW. Ranked through PRIORITY_ORDER rather than
+// the raw constants, so the list order and the menu order cannot drift apart and
+// the sort does not quietly depend on HIGH being the largest number.
+//
+// Array.prototype.sort is stable, which is the property that matters here: tasks
+// of equal priority keep the order the user put them in. It is also why this needs
+// no per-group logic -- groupByDay orders the *sections* by day and renders each
+// section's items in array order, so one sort of the flat array leaves every group
+// internally priority-ordered.
+//
+// Returns a new array, like moveItem() and setAllDone(). Stamps nothing: this
+// changes list position, not the items.
+export function sortByPriority(items) {
+  const rank = (item) => PRIORITY_ORDER.indexOf(item.priority);
+  return [...items].sort((a, b) => rank(a) - rank(b));
+}
+
 export function nextTheme(theme) {
   return theme === THEME.LIGHT ? THEME.DARK : THEME.LIGHT;
 }
 
+export function nextWidth(width) {
+  return width === WIDTH.WIDE ? WIDTH.COMPACT : WIDTH.WIDE;
+}
+
+// The `typeof window` guard is load-bearing: background.js imports this module,
+// and a service worker has no window at all. Without it, normalizeState() throws
+// a ReferenceError inside the worker on the empty-storage path.
 export function preferredTheme() {
   const prefersDark =
+    typeof window !== "undefined" &&
     window.matchMedia &&
     window.matchMedia("(prefers-color-scheme: dark)").matches;
   return prefersDark ? THEME.DARK : THEME.LIGHT;
@@ -124,6 +189,24 @@ export function debounce(fn, wait) {
     }, wait);
     if (isIdle) fn(...args);
   };
+}
+
+// What the reminder is for: work that is flagged HIGH and still outstanding.
+// Anything done no longer needs reminding about.
+export function highPriorityItems(items) {
+  return items.filter((item) => item.priority === PRIORITY.HIGH && !item.done);
+}
+
+// Epoch ms of the next time the clock reads `time` ("HH:MM"). Today if that is
+// still ahead, otherwise tomorrow. Local time throughout -- a reminder at 09:00
+// means 09:00 where the user is, which is the same reasoning that makes dueDate a
+// day key rather than a timestamp.
+export function nextReminderTime(time, from = new Date()) {
+  const [hours, minutes] = time.split(":").map(Number);
+  const next = new Date(from);
+  next.setHours(hours, minutes, 0, 0);
+  if (next.getTime() <= from.getTime()) next.setDate(next.getDate() + 1);
+  return next.getTime();
 }
 
 export function isAllDone(items) {
@@ -250,6 +333,17 @@ export function extractDayToken(text) {
   return { text: text.replace(match[0], " ").replace(/\s+/g, " ").trim(), dueDate };
 }
 
+// Section order, top to bottom. Today leads because it is the only section you
+// almost always want to see without scrolling; a missed day still needs acting
+// on, so OVERDUE sits directly under it rather than being buried.
+const RANK = { TODAY: 0, OVERDUE: 1, UPCOMING: 2, UNSCHEDULED: 3 };
+
+function groupRank(key, reference) {
+  if (!key) return RANK.UNSCHEDULED;
+  if (key === reference) return RANK.TODAY;
+  return key < reference ? RANK.OVERDUE : RANK.UPCOMING;
+}
+
 // Groups items for display while keeping each item's index into the original
 // array, because every row handler addresses state.items by index.
 export function groupByDay(items, reference = todayKey()) {
@@ -269,11 +363,13 @@ export function groupByDay(items, reference = todayKey()) {
       entries,
       done: entries.filter(({ item }) => item.done).length,
     }))
-    // Dated groups run oldest first so anything overdue surfaces at the top;
-    // unscheduled work sinks to the bottom.
     .sort((a, b) => {
-      if (!a.key) return 1;
-      if (!b.key) return -1;
-      return a.key < b.key ? -1 : 1;
+      const byRank = groupRank(a.key, reference) - groupRank(b.key, reference);
+      if (byRank !== 0) return byRank;
+      if (a.key === b.key) return 0;
+      // Soonest first, except inside OVERDUE where the most recently missed day
+      // is the one you are most likely to still act on.
+      const ascending = a.key < b.key ? -1 : 1;
+      return groupRank(a.key, reference) === RANK.OVERDUE ? -ascending : ascending;
     });
 }

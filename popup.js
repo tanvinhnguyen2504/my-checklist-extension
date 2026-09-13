@@ -1,5 +1,5 @@
 import {
-  THEME,
+  STORAGE_KEY,
   countDone,
   isAllDone,
   loadState,
@@ -7,14 +7,19 @@ import {
   todayKey,
   moveItem,
   nextTheme,
+  nextWidth,
+  normalizeState,
   parseDraft,
   progressPercent,
+  isTimeOfDay,
   saveState,
   setAllDone,
+  sortByPriority,
   touchItem,
 } from "./utils.js";
 import { createDragController } from "./drag-drop.js";
 import { closeMenu, installMenuDismissal } from "./menu.js";
+import { installSettings, renderSettings } from "./settings.js";
 import { attachPriorityTag } from "./priority.js";
 import { attachDueChip } from "./due-date.js";
 import { downloadCsv } from "./export.js";
@@ -24,8 +29,8 @@ const rowTemplate = document.getElementById("row-tpl");
 const countEl = document.getElementById("count");
 const progressEl = document.getElementById("progress");
 const draftEl = document.getElementById("draft");
-const themeButton = document.getElementById("theme");
-const themeLabelEl = document.getElementById("theme-label");
+const settingsPanelEl = document.getElementById("settings-panel");
+const settingsButtonEl = document.getElementById("btn-settings");
 const checkAllButtonEl = document.getElementById("btn-check-all");
 const clearAllButtonEl = document.getElementById("btn-clear-all");
 const exportButtonEl = document.getElementById("btn-export-csv");
@@ -34,7 +39,9 @@ const groupTemplate = document.getElementById("group-tpl");
 
 const CLEAR_CONFIRM_MS = 3000;
 
-let state = { items: [], theme: THEME.LIGHT };
+// Placeholder until loadState() resolves. normalizeState rather than a literal,
+// so every field the renderers read exists from the first frame.
+let state = normalizeState(null);
 let clearArmed = false;
 let clearTimer = null;
 // The pointer press that dismisses an open editor also completes as a click,
@@ -85,6 +92,11 @@ function renderRow(item, index, dayKey) {
 
   attachPriorityTag(row.querySelector(".tag"), item, (priority) => {
     touchItem(item).priority = priority;
+    // Mutate, stamp, sort, re-render -- in that order. The resort invalidates the
+    // `index` every row handler closed over, and saveAndRender() is what rebuilds
+    // the rows and re-derives them. `item` is an object reference, so it follows
+    // its own object through the sort.
+    state.items = sortByPriority(state.items);
     saveAndRender();
   });
   attachDueChip(row.querySelector(".due"), row.querySelector(".due-input"), item, (dayKey) => {
@@ -222,9 +234,11 @@ function startEditing(row, item) {
   input.select();
 }
 
-function setTheme() {
+// Both appearance preferences are attributes on <html>, which is a contract with
+// popup.css -- renaming one here breaks the styling with no error anywhere.
+function applyAppearance() {
   document.documentElement.dataset.theme = state.theme;
-  themeLabelEl.textContent = state.theme === THEME.LIGHT ? "LIGHT" : "DARK";
+  document.documentElement.dataset.width = state.settings.width;
 }
 
 function renderProgress() {
@@ -234,9 +248,10 @@ function renderProgress() {
 }
 
 function render() {
-  setTheme()
+  applyAppearance()
   renderProgress()
   renderActions()
+  renderSettings(state)
 
   listEl.textContent = "";
 
@@ -298,13 +313,53 @@ function handleEventListener() {
   exportButtonEl.addEventListener("click", () => {
     downloadCsv(state.items);
   });
-  themeButton.addEventListener("click", () => {
-    state.theme = nextTheme(state.theme);
-    saveAndRender();
-  });
 }
 
 installMenuDismissal();
+installSettings({
+  panel: settingsPanelEl,
+  trigger: settingsButtonEl,
+  onToggleTheme: () => {
+    state.theme = nextTheme(state.theme);
+    saveAndRender();
+  },
+  onToggleWidth: () => {
+    state.settings.width = nextWidth(state.settings.width);
+    saveAndRender();
+  },
+  onToggleReminder: () => {
+    state.settings.reminder.enabled = !state.settings.reminder.enabled;
+    saveAndRender();
+  },
+  onPickReminderTime: (time) => {
+    // The control can be cleared, which reports "". Keep the last good time
+    // rather than writing a value the service worker cannot schedule.
+    if (!isTimeOfDay(time)) {
+      return;
+    }
+    state.settings.reminder.time = time;
+    saveAndRender();
+  },
+});
+
+// The reminder window writes to the same storage key, and loadState()'s .then
+// replaces `state` wholesale -- without this, ticking an item there would be
+// undone by the popup's next save.
+if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.onChanged) {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local" || !changes[STORAGE_KEY]) {
+      return;
+    }
+    const incoming = normalizeState(changes[STORAGE_KEY].newValue);
+    // Fires for this popup's own writes too. Re-rendering then would destroy an
+    // open inline editor for nothing, so act only on a real difference.
+    if (JSON.stringify(incoming) === JSON.stringify(state)) {
+      return;
+    }
+    state = incoming;
+    render();
+  });
+}
 handleEventListener();
 
 loadState().then((savedState) => {

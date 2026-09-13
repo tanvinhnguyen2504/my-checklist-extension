@@ -1,23 +1,29 @@
 # CLAUDE.md
 
-Chrome Manifest V3 extension: a toolbar popup todo checklist. No build step, no
-framework, no dependencies. The repo root *is* the extension — `manifest.json`
-sits here, and that is the folder you point `chrome://extensions` at.
+Chrome Manifest V3 extension: a toolbar popup todo checklist, plus a service
+worker that opens a daily reminder window. No build step, no framework, no
+dependencies. The repo root *is* the extension — `manifest.json` sits here, and
+that is the folder you point `chrome://extensions` at.
 
 ## Layout
 
 | File | Owns |
 | --- | --- |
-| `manifest.json` | MV3 definition. `storage` permission only, no host permissions |
-| `popup.html` | Markup + `row-tpl` / `group-tpl` templates + the priority menu container |
-| `popup.css` | Theme tokens and all styling |
+| `manifest.json` | MV3 definition. `storage` + `alarms`, no host permissions |
+| `popup.html` | Markup + `row-tpl` / `group-tpl` templates + the priority menu container + the settings panel |
+| `popup.css` | Theme tokens and all styling, for the popup *and* the reminder window |
 | `popup.js` | DOM rendering and event wiring. No business logic |
+| `settings.js` | The settings panel: its open state and its controls |
 | `utils.js` | Storage, parsing, dates, grouping. **No DOM access** |
 | `drag-drop.js` | HTML5 drag events, drop markers, and the dragged-row state |
+| `background.js` | Service worker. Owns the reminder alarm and opens its window |
+| `reminder.html` / `reminder.js` | The daily HIGH-priority reminder window |
 
-`popup.html` loads `popup.js` with `type="module"`, so ES `import`/`export`
-works across all three scripts. Adding a new script means adding it as an import,
-not a second `<script>` tag.
+`popup.html` loads `popup.js` with `type="module"`, so ES `import`/`export` works
+across every script it pulls in. Adding a module to the popup means adding it as
+an import, not a second `<script>` tag. `reminder.html` is a separate page with
+its own entry point, and `background.js` is declared `"type": "module"` in the
+manifest so it can import `utils.js` too.
 
 ## Architecture rules
 
@@ -27,15 +33,35 @@ not a second `<script>` tag.
 - **`drag-drop.js` never touches the todo list.** It reports a completed drop as
   indices plus a target day key through `onRowDrop` / `onGroupDrop`, and
   `popup.js` decides what that means.
+- **`utils.js` must stay runnable in a service worker.** `background.js` imports
+  it, and a worker has no `window` — which is why `preferredTheme()` guards on
+  `typeof window`. Anything added there that touches `window` breaks the worker
+  on the empty-storage path, silently.
+- **`reminder.js` never imports `popup.js`.** `popup.js` calls
+  `getElementById` at module top level and runs its wiring on load, so it throws
+  on any page without the popup's ids. The reminder page shares `utils.js` and
+  `popup.css` and duplicates the few lines it needs to draw a row.
 - **`render()` rebuilds every row from the template.** There is no partial
   re-render. Any handler that mutates state calls `saveAndRender()`, which
   replaces the DOM nodes the handler was attached to.
 
 ## Data model
 
-State is `{ items: [], theme }`, saved under `chrome.storage.local` key
+State is `{ items: [], theme, settings }`, saved under `chrome.storage.local` key
 `checklist.v1` (`STORAGE_KEY`), with a `localStorage` fallback so the popup also
 runs from a plain page during testing.
+
+`settings` is `{ width, reminder: { enabled, time } }`. `theme` stays a top-level
+field deliberately — it predates `settings`, and moving it in would reset the
+saved theme for every existing user and leave `normalizeState()` carrying a
+read-from-both-places branch forever. `normalizeSettings()` always returns a
+*complete* object; never spread a partial saved value into live state, because a
+missing nested field reads as `undefined` exactly where it matters and fails
+silently.
+
+`reminder.time` is a local `"HH:MM"` string, for the same reason `dueDate` is a
+day key: it is a time of day, not an instant, and `<input type="time">` reads and
+writes that format natively.
 
 An item is:
 
@@ -92,7 +118,24 @@ list position, not the item.
   needs `dataTransfer.setData()` or Firefox refuses to start it.
 - **`loadState()` is async and its `.then` replaces `state` wholesale.** Items
   added in the milliseconds before storage resolves are silently discarded.
-  Known, unfixed, hard to hit in practice.
+  Known, unfixed, hard to hit in practice. The same wholesale replacement is why
+  the reminder window ticking an item needed the `chrome.storage.onChanged`
+  listener in `popup.js` — without it the popup's next save writes stale items
+  back and the tick vanishes.
+- **`background.js` re-syncs the alarm on every storage write**, and the reminder
+  window writes whenever an item is ticked. `syncAlarm()` therefore compares the
+  existing alarm against the computed time and leaves it alone when they match;
+  recreating it unconditionally would push each day's reminder further away every
+  time you used the previous one.
+- **An MV3 service worker is terminated when idle.** Nothing in `background.js`
+  may rely on module-level mutable state surviving between events, and every
+  listener has to be registered at the top level so the worker can be woken for
+  it.
+- **Module-level `getElementById` makes the popup un-rebootable in one process.**
+  `priority.js` and `due-date.js` capture their elements at import time, and Node
+  caches ES modules by specifier — so a jsdom test that boots the popup twice in
+  one process has the second boot driving the first boot's DOM, with no error.
+  One boot per process.
 
 ## Testing
 
@@ -106,7 +149,13 @@ global.localStorage = dom.window.localStorage;
 await import("./popup.mjs");
 ```
 
-`utils.js` can be imported directly in Node with only a `window.matchMedia` stub.
+`utils.js` can be imported directly in Node with only a `window.matchMedia` stub —
+or with no stub at all, which is the case worth testing, since that is the
+service worker's environment.
+
+`background.js` is testable the same way with a hand-rolled `chrome` stub
+(`storage.local`, `alarms`, `windows`, `runtime`) and no `window` or `document`
+at all.
 
 Two things that matter when writing these tests:
 

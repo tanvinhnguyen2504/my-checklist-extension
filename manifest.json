@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Checklist",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A quiet todo checklist in your toolbar. Offline, no account, priority flags.",
   "action": {
     "default_title": "Checklist",
@@ -19,5 +19,9 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "permissions": ["storage"]
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": ["storage", "alarms"]
 }
