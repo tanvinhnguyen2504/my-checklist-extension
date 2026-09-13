@@ -11,6 +11,22 @@ export const THEME = {
   DARK: "dark",
 };
 
+export const WIDTH = {
+  COMPACT: "compact",
+  WIDE: "wide",
+};
+
+// Preferences that are not part of the list itself. `theme` is deliberately NOT
+// in here: it predates this object, and moving it would reset the saved theme
+// for everyone already using the extension.
+export const DEFAULT_SETTINGS = {
+  width: WIDTH.COMPACT,
+  reminder: {
+    enabled: false,
+    time: "09:00",
+  },
+};
+
 const hasChromeStorage =
   typeof chrome !== "undefined" && chrome.storage && chrome.storage.local;
 
@@ -40,10 +56,33 @@ export function saveState(state) {
   } catch (_) {}
 }
 
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+// A reminder time is a local "HH:MM" string for the same reason dueDate is a day
+// key: it is a time of day, not an instant, and <input type="time"> reads and
+// writes exactly this format.
+export function isTimeOfDay(value) {
+  return typeof value === "string" && TIME_PATTERN.test(value);
+}
+
+// Always returns a complete settings object. Callers must never spread a partial
+// saved value into live state -- a half-populated `reminder` would read as
+// undefined at the point it matters and fail silently.
+export function normalizeSettings(saved) {
+  const reminder = (saved && saved.reminder) || {};
+  return {
+    width: saved && saved.width === WIDTH.WIDE ? WIDTH.WIDE : WIDTH.COMPACT,
+    reminder: {
+      enabled: !!reminder.enabled,
+      time: isTimeOfDay(reminder.time) ? reminder.time : DEFAULT_SETTINGS.reminder.time,
+    },
+  };
+}
+
 // Accepts anything read back from storage and returns a usable state object.
 export function normalizeState(saved) {
   if (!saved || !Array.isArray(saved.items)) {
-    return { items: [], theme: preferredTheme() };
+    return { items: [], theme: preferredTheme(), settings: normalizeSettings(null) };
   }
   return {
     items: saved.items.map((item) => ({
@@ -54,6 +93,7 @@ export function normalizeState(saved) {
       dueDate: isDayKey(item.dueDate) ? item.dueDate : null,
     })),
     theme: saved.theme === THEME.DARK ? THEME.DARK : THEME.LIGHT,
+    settings: normalizeSettings(saved.settings),
   };
 }
 
@@ -92,6 +132,10 @@ export const PRIORITY_LABELS = {
 
 export function nextTheme(theme) {
   return theme === THEME.LIGHT ? THEME.DARK : THEME.LIGHT;
+}
+
+export function nextWidth(width) {
+  return width === WIDTH.WIDE ? WIDTH.COMPACT : WIDTH.WIDE;
 }
 
 export function preferredTheme() {

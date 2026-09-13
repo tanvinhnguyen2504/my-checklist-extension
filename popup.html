@@ -14,12 +14,17 @@
   <button id="btn-check-all" class="chip" type="button" title="Mark everything done">&check; MARK ALL</button>
   <button id="btn-clear-all" class="chip danger" type="button" title="Remove every item">CLEAR</button>
   <button id="btn-export-csv" class="chip icon" type="button" title="Download the list as CSV" aria-label="Download the list as CSV">&darr;</button>
-  <button id="theme" class="chip" type="button" title="Toggle light / dark">
-    <span class="dot"></span><span id="theme-label">LIGHT</span>
-  </button>
+  <button id="btn-settings" class="chip icon" type="button" title="Settings" aria-label="Settings" aria-expanded="false" aria-controls="settings-panel">&#9881;</button>
 </header>
 
 <div class="track"><div id="progress" class="fill"></div></div>
+
+<section id="settings-panel" class="settings" hidden>
+  <div class="setting">
+    <span class="setting-label" id="set-theme-label">Dark mode</span>
+    <button id="set-theme" class="switch" type="button" role="switch" aria-checked="false" aria-labelledby="set-theme-label"><span class="knob"></span></button>
+  </div>
+</section>
 
 <main id="list" class="list"></main>
 

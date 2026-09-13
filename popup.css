@@ -131,6 +131,51 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .track { height: 3px; background: var(--track); }
 .fill { height: 3px; width: 0; background: var(--teal); transition: width 0.22s ease; }
 
+/* The panel sits in flow between the progress bar and the list, so opening it
+   shrinks .list rather than covering it -- .list is flex:1 and gives up the
+   space. An overlay would have to re-create that sizing by hand. */
+.settings {
+  flex: none;
+  padding: 4px 16px 10px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+.settings[hidden] { display: none; }
+
+.setting {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+}
+.setting-label { flex: 1; min-width: 0; font-size: 12.5px; }
+.setting-hint { display: block; margin-top: 2px; font-size: 10.5px; color: var(--dim); }
+
+/* A bare button, not a checkbox: the row is the label, and role=switch plus
+   aria-checked carries the state to a screen reader without a second element. */
+.switch {
+  flex: none;
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--track);
+  transition: background 0.15s ease;
+}
+.switch[aria-checked="true"] { background: var(--teal); }
+.knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: left 0.15s ease;
+}
+.switch[aria-checked="true"] .knob { left: 18px; }
+
 /* min-height:0 is what actually lets a flex child shrink below its content and
    scroll; flex:1 alone is not enough. The sticky group headers key off this
    element being the scroll container. */

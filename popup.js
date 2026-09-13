@@ -1,5 +1,4 @@
 import {
-  THEME,
   countDone,
   isAllDone,
   loadState,
@@ -7,6 +6,7 @@ import {
   todayKey,
   moveItem,
   nextTheme,
+  normalizeState,
   parseDraft,
   progressPercent,
   saveState,
@@ -15,6 +15,7 @@ import {
 } from "./utils.js";
 import { createDragController } from "./drag-drop.js";
 import { closeMenu, installMenuDismissal } from "./menu.js";
+import { installSettings, renderSettings } from "./settings.js";
 import { attachPriorityTag } from "./priority.js";
 import { attachDueChip } from "./due-date.js";
 import { downloadCsv } from "./export.js";
@@ -24,8 +25,8 @@ const rowTemplate = document.getElementById("row-tpl");
 const countEl = document.getElementById("count");
 const progressEl = document.getElementById("progress");
 const draftEl = document.getElementById("draft");
-const themeButton = document.getElementById("theme");
-const themeLabelEl = document.getElementById("theme-label");
+const settingsPanelEl = document.getElementById("settings-panel");
+const settingsButtonEl = document.getElementById("btn-settings");
 const checkAllButtonEl = document.getElementById("btn-check-all");
 const clearAllButtonEl = document.getElementById("btn-clear-all");
 const exportButtonEl = document.getElementById("btn-export-csv");
@@ -34,7 +35,9 @@ const groupTemplate = document.getElementById("group-tpl");
 
 const CLEAR_CONFIRM_MS = 3000;
 
-let state = { items: [], theme: THEME.LIGHT };
+// Placeholder until loadState() resolves. normalizeState rather than a literal,
+// so every field the renderers read exists from the first frame.
+let state = normalizeState(null);
 let clearArmed = false;
 let clearTimer = null;
 // The pointer press that dismisses an open editor also completes as a click,
@@ -224,7 +227,6 @@ function startEditing(row, item) {
 
 function setTheme() {
   document.documentElement.dataset.theme = state.theme;
-  themeLabelEl.textContent = state.theme === THEME.LIGHT ? "LIGHT" : "DARK";
 }
 
 function renderProgress() {
@@ -237,6 +239,7 @@ function render() {
   setTheme()
   renderProgress()
   renderActions()
+  renderSettings(state)
 
   listEl.textContent = "";
 
@@ -298,13 +301,17 @@ function handleEventListener() {
   exportButtonEl.addEventListener("click", () => {
     downloadCsv(state.items);
   });
-  themeButton.addEventListener("click", () => {
-    state.theme = nextTheme(state.theme);
-    saveAndRender();
-  });
 }
 
 installMenuDismissal();
+installSettings({
+  panel: settingsPanelEl,
+  trigger: settingsButtonEl,
+  onToggleTheme: () => {
+    state.theme = nextTheme(state.theme);
+    saveAndRender();
+  },
+});
 handleEventListener();
 
 loadState().then((savedState) => {
