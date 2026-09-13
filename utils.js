@@ -130,6 +130,23 @@ export const PRIORITY_LABELS = {
   [PRIORITY.LOW]: "LOW",
 };
 
+// Orders the list HIGH -> MEDIUM -> LOW. Ranked through PRIORITY_ORDER rather than
+// the raw constants, so the list order and the menu order cannot drift apart and
+// the sort does not quietly depend on HIGH being the largest number.
+//
+// Array.prototype.sort is stable, which is the property that matters here: tasks
+// of equal priority keep the order the user put them in. It is also why this needs
+// no per-group logic -- groupByDay orders the *sections* by day and renders each
+// section's items in array order, so one sort of the flat array leaves every group
+// internally priority-ordered.
+//
+// Returns a new array, like moveItem() and setAllDone(). Stamps nothing: this
+// changes list position, not the items.
+export function sortByPriority(items) {
+  const rank = (item) => PRIORITY_ORDER.indexOf(item.priority);
+  return [...items].sort((a, b) => rank(a) - rank(b));
+}
+
 export function nextTheme(theme) {
   return theme === THEME.LIGHT ? THEME.DARK : THEME.LIGHT;
 }

@@ -126,7 +126,7 @@ To move a task to a different day, drag it onto that day's heading.
 | --- | --- |
 | Tick a task off | Click the checkbox (the task's text is for editing instead) |
 | Rename a task | Double-click its text, then Enter to save (Escape cancels) |
-| Set priority | Click the coloured strip on the left edge of the row |
+| Set priority | Click the priority pill on the row, then pick a level. The day resorts HIGH → MEDIUM → LOW |
 | Reorder tasks | Drag a row up or down |
 | Move to another day | Drag a row onto that day's heading |
 | Delete one task | Hover the row and click the `×` |

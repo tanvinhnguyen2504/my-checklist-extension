@@ -14,6 +14,7 @@ import {
   isTimeOfDay,
   saveState,
   setAllDone,
+  sortByPriority,
   touchItem,
 } from "./utils.js";
 import { createDragController } from "./drag-drop.js";
@@ -91,6 +92,11 @@ function renderRow(item, index, dayKey) {
 
   attachPriorityTag(row.querySelector(".tag"), item, (priority) => {
     touchItem(item).priority = priority;
+    // Mutate, stamp, sort, re-render -- in that order. The resort invalidates the
+    // `index` every row handler closed over, and saveAndRender() is what rebuilds
+    // the rows and re-derives them. `item` is an object reference, so it follows
+    // its own object through the sort.
+    state.items = sortByPriority(state.items);
     saveAndRender();
   });
   attachDueChip(row.querySelector(".due"), row.querySelector(".due-input"), item, (dayKey) => {
