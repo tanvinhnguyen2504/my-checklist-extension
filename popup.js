@@ -6,6 +6,7 @@ import {
   todayKey,
   moveItem,
   nextTheme,
+  nextWidth,
   normalizeState,
   parseDraft,
   progressPercent,
@@ -225,8 +226,11 @@ function startEditing(row, item) {
   input.select();
 }
 
-function setTheme() {
+// Both appearance preferences are attributes on <html>, which is a contract with
+// popup.css -- renaming one here breaks the styling with no error anywhere.
+function applyAppearance() {
   document.documentElement.dataset.theme = state.theme;
+  document.documentElement.dataset.width = state.settings.width;
 }
 
 function renderProgress() {
@@ -236,7 +240,7 @@ function renderProgress() {
 }
 
 function render() {
-  setTheme()
+  applyAppearance()
   renderProgress()
   renderActions()
   renderSettings(state)
@@ -309,6 +313,10 @@ installSettings({
   trigger: settingsButtonEl,
   onToggleTheme: () => {
     state.theme = nextTheme(state.theme);
+    saveAndRender();
+  },
+  onToggleWidth: () => {
+    state.settings.width = nextWidth(state.settings.width);
     saveAndRender();
   },
 });

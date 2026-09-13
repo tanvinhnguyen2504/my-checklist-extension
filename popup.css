@@ -88,6 +88,23 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Chrome sizes a popup from its content and caps it at 800x600, with no resize
+   handle for the user -- so "expand the width" means the page asking for more
+   room. 720 leaves headroom under the cap; a popup that asks for more than 800
+   gets clipped, not scrolled. */
+html[data-width="wide"] body { width: 720px; }
+
+/* Width alone does not fix the text: .text truncates with an ellipsis at any
+   width, so wide mode has to relax that too. overflow-wrap:anywhere because a
+   pasted URL offers no break opportunities and would otherwise force the row to
+   overflow sideways. .row is min-height, so a wrapped row simply grows. */
+html[data-width="wide"] .text {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 
 .bar {

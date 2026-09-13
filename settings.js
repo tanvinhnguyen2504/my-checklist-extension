@@ -9,11 +9,12 @@
 // wholesale, which would destroy the panel's open state on every save, and
 // .body's catch-all click handler toggles done for anything placed in a row.
 
-import { THEME } from "./utils.js";
+import { THEME, WIDTH } from "./utils.js";
 
 let panelEl = null;
 let triggerEl = null;
 let themeSwitchEl = null;
+let widthSwitchEl = null;
 
 export function isSettingsOpen() {
   return panelEl !== null && !panelEl.hidden;
@@ -36,15 +37,18 @@ function toggleSettings() {
 // change from somewhere other than its own switch.
 export function renderSettings(state) {
   themeSwitchEl.setAttribute("aria-checked", String(state.theme === THEME.DARK));
+  widthSwitchEl.setAttribute("aria-checked", String(state.settings.width === WIDTH.WIDE));
 }
 
-export function installSettings({ panel, trigger, onToggleTheme }) {
+export function installSettings({ panel, trigger, onToggleTheme, onToggleWidth }) {
   panelEl = panel;
   triggerEl = trigger;
   themeSwitchEl = panel.querySelector("#set-theme");
+  widthSwitchEl = panel.querySelector("#set-width");
 
   triggerEl.addEventListener("click", toggleSettings);
   themeSwitchEl.addEventListener("click", onToggleTheme);
+  widthSwitchEl.addEventListener("click", onToggleWidth);
 
   // Escape closes the panel, matching how the priority menu already behaves.
   // The menu installs its own Escape handler and returns early when no menu is
