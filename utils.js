@@ -250,6 +250,17 @@ export function extractDayToken(text) {
   return { text: text.replace(match[0], " ").replace(/\s+/g, " ").trim(), dueDate };
 }
 
+// Section order, top to bottom. Today leads because it is the only section you
+// almost always want to see without scrolling; a missed day still needs acting
+// on, so OVERDUE sits directly under it rather than being buried.
+const RANK = { TODAY: 0, OVERDUE: 1, UPCOMING: 2, UNSCHEDULED: 3 };
+
+function groupRank(key, reference) {
+  if (!key) return RANK.UNSCHEDULED;
+  if (key === reference) return RANK.TODAY;
+  return key < reference ? RANK.OVERDUE : RANK.UPCOMING;
+}
+
 // Groups items for display while keeping each item's index into the original
 // array, because every row handler addresses state.items by index.
 export function groupByDay(items, reference = todayKey()) {
@@ -269,11 +280,13 @@ export function groupByDay(items, reference = todayKey()) {
       entries,
       done: entries.filter(({ item }) => item.done).length,
     }))
-    // Dated groups run oldest first so anything overdue surfaces at the top;
-    // unscheduled work sinks to the bottom.
     .sort((a, b) => {
-      if (!a.key) return 1;
-      if (!b.key) return -1;
-      return a.key < b.key ? -1 : 1;
+      const byRank = groupRank(a.key, reference) - groupRank(b.key, reference);
+      if (byRank !== 0) return byRank;
+      if (a.key === b.key) return 0;
+      // Soonest first, except inside OVERDUE where the most recently missed day
+      // is the one you are most likely to still act on.
+      const ascending = a.key < b.key ? -1 : 1;
+      return groupRank(a.key, reference) === RANK.OVERDUE ? -ascending : ascending;
     });
 }
