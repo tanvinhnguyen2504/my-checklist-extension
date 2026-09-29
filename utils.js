@@ -171,7 +171,9 @@ export function countDone(items) {
 }
 
 export function progressPercent(items) {
-  if (!items.length) return 0;
+  if (!items.length) {
+    return 0;
+  }
   return Math.round((countDone(items) / items.length) * 100);
 }
 
@@ -205,7 +207,9 @@ export function nextReminderTime(time, from = new Date()) {
   const [hours, minutes] = time.split(":").map(Number);
   const next = new Date(from);
   next.setHours(hours, minutes, 0, 0);
-  if (next.getTime() <= from.getTime()) next.setDate(next.getDate() + 1);
+  if (next.getTime() <= from.getTime()) {
+    next.setDate(next.getDate() + 1);
+  }
   return next.getTime();
 }
 
@@ -224,9 +228,15 @@ export function setAllDone(items, done) {
 // Moves the item at `from` so it lands before position `to`, where `to` is an
 // index in the ORIGINAL array. Returns a new array; unchanged if it is a no-op.
 export function moveItem(items, from, to) {
-  if (from < 0 || from >= items.length) return items;
-  if (to < 0 || to > items.length) return items;
-  if (to === from || to === from + 1) return items;
+  if (from < 0 || from >= items.length) {
+    return items
+  };
+  if (to < 0 || to > items.length) {
+    return items
+  };
+  if (to === from || to === from + 1) {
+    return items
+  };
 
   const next = items.slice();
   const [moved] = next.splice(from, 1);
@@ -237,7 +247,9 @@ export function moveItem(items, from, to) {
 // Items saved before timestamps existed have no updatedAt; they render blank
 // rather than claiming a made-up date.
 export function formatDate(timestamp) {
-  if (!timestamp) return "";
+  if (!timestamp) {
+    return "";
+  }
   const date = new Date(timestamp);
   const pad = (value) => String(value).padStart(2, "0");
   return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;

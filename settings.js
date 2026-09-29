@@ -24,7 +24,9 @@ export function isSettingsOpen() {
 }
 
 export function closeSettings() {
-  if (!isSettingsOpen()) return;
+  if (!isSettingsOpen()) {
+    return;
+  }
   panelEl.hidden = true;
   triggerEl.setAttribute("aria-expanded", "false");
 }
@@ -33,7 +35,9 @@ function toggleSettings() {
   const opening = panelEl.hidden;
   panelEl.hidden = !opening;
   triggerEl.setAttribute("aria-expanded", String(opening));
-  if (opening) themeSwitchEl.focus();
+  if (opening) {
+    themeSwitchEl.focus();
+  }
 }
 
 // Syncs the controls from state. Called on every render, because a preference can
@@ -48,7 +52,9 @@ export function renderSettings(state) {
   reminderTimeRowEl.hidden = !enabled;
   // Assigning unconditionally would fight the user mid-edit, because an
   // <input type="time"> reports a change per field as it is filled in.
-  if (reminderTimeEl.value !== time) reminderTimeEl.value = time;
+  if (reminderTimeEl.value !== time) {
+    reminderTimeEl.value = time;
+  }
 }
 
 export function installSettings({

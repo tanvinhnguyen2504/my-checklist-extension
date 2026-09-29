@@ -73,7 +73,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 
 chrome.runtime.onInstalled.addListener(syncAlarm);
 chrome.runtime.onStartup.addListener(syncAlarm);
-chrome.storage.onChanged.addListener((changes, area) => {
+chrome.storage.onChanged.addListener((_, area) => {
   if (area === "local") {
     syncAlarm();
   }

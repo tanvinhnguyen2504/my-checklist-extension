@@ -105,11 +105,15 @@ function renderRow(item, index, dayKey) {
   });
 
   row.querySelector(".body").addEventListener("click", (event) => {
-    if (consumeEditorDismissal(event)) return;
+    if (consumeEditorDismissal(event)) {
+      return;
+    }
     // The text label is the edit target (double-click); toggling it here would
     // re-render the row before dblclick could fire. The rest are controls with
     // their own handlers.
-    if (event.target.closest(BODY_CONTROLS)) return;
+    if (event.target.closest(BODY_CONTROLS)) {
+      return;
+    }
     item.done = !item.done;
     touchItem(item);
     saveAndRender();
@@ -202,7 +206,9 @@ function startEditing(row, item) {
   // Capture phase, so this runs before the press's default action moves focus
   // and blurs the input -- i.e. before settle() below.
   const notePress = (event) => {
-    if (!input.contains(event.target)) editorDismissedBy = event.target;
+    if (!input.contains(event.target)) {
+      editorDismissedBy = event.target;
+    }
   };
   document.addEventListener("mousedown", notePress, true);
 
@@ -224,10 +230,16 @@ function startEditing(row, item) {
   };
 
   input.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") settle(true);
-    else if (event.key === "Escape") settle(false);
+    if (event.key === "Enter") {
+      settle(true);
+    }
+    else if (event.key === "Escape") {
+      settle(false);
+    }
   });
-  input.addEventListener("blur", () => settle(true));
+  input.addEventListener("blur", () => {
+    settle(true)
+  });
 
   textEl.replaceWith(input);
   input.focus();
