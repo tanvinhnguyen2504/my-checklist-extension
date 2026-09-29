@@ -1,5 +1,6 @@
 # 2026-09-29
 - feat(reminder): show every outstanding task ordered by priority, not just high-priority ones — the window still only opens for high-priority tasks
+- refactore(codebase): move to layers `core`, `features`, `ui` to split the distinct logic
 
 # 2026-09-13
 - [#PR2](https://github.com/tanvinhnguyen2504/my-checklist-extension/pull/2)
