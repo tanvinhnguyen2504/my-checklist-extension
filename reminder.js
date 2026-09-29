@@ -1,12 +1,13 @@
 import {
-  PRIORITY_LABELS,
   PRIORITY,
+  PRIORITY_LABELS,
   formatDayKeyShort,
-  highPriorityItems,
   loadState,
   saveState,
   touchItem,
+  sortByPriority,
 } from "./utils.js";
+
 
 const listEl = document.getElementById("reminder-list");
 const countEl = document.getElementById("reminder-count");
@@ -17,7 +18,7 @@ let state = null;
 function renderRow(item) {
   const row = document.createElement("div");
   row.className = "row";
-  row.dataset.priority = String(PRIORITY.HIGH);
+  row.dataset.priority = String(item.priority);
   row.dataset.done = "false";
 
   const flag = document.createElement("div");
@@ -37,8 +38,7 @@ function renderRow(item) {
 
   const tag = document.createElement("span");
   tag.className = "tag";
-  tag.textContent = PRIORITY_LABELS[PRIORITY.HIGH];
-
+  tag.textContent = String(PRIORITY_LABELS[item.priority])
   body.append(box, text);
   if (item.dueDate) {
     const due = document.createElement("span");
@@ -70,7 +70,7 @@ function renderAllClear() {
   heading.textContent = "All clear";
 
   const hint = document.createElement("span");
-  hint.textContent = "Nothing high priority is outstanding.";
+  hint.textContent = "Nothing priority is outstanding.";
 
   empty.append(heading, hint);
   listEl.append(empty);
@@ -79,15 +79,21 @@ function renderAllClear() {
 function render() {
   document.documentElement.dataset.theme = state.theme;
 
-  const items = highPriorityItems(state.items);
-  countEl.textContent = String(items.length);
+  if (!state || !state.items) {
+    return
+  }
+
+  const unDoneItems = state.items.filter(item => !item.done)
+
+  const sortItems = sortByPriority(unDoneItems)
+  countEl.textContent = String(sortItems.length);
   listEl.textContent = "";
 
-  if (!items.length) {
+  if (!sortItems.length) {
     renderAllClear();
     return;
   }
-  items.forEach((item) => listEl.append(renderRow(item)));
+  sortItems.forEach((item) => listEl.append(renderRow(item)));
 }
 
 dismissButtonEl.addEventListener("click", () => window.close());
