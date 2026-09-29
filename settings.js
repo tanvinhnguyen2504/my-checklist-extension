@@ -1,14 +1,3 @@
-// The settings panel: preferences that are not part of the list itself.
-//
-// Deliberately NOT built on menu.js. That module keeps a single module-scoped
-// anchor on the assumption that one popover is open at a time, and closes on any
-// outside pointerdown. This panel stays open while you click the controls inside
-// it, and a row's priority menu has to be able to coexist with it.
-//
-// The panel lives outside .list for two reasons: render() rebuilds .list
-// wholesale, which would destroy the panel's open state on every save, and
-// .body's catch-all click handler toggles done for anything placed in a row.
-
 import { THEME, WIDTH } from "./utils.js";
 
 let panelEl = null;
