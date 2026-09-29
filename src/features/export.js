@@ -3,7 +3,7 @@
 // Deliberately free of top-level DOM access so toCsv() stays importable and
 // testable in plain Node; the only DOM touch is inside downloadCsv().
 
-import { PRIORITY_LABELS, todayKey } from "./utils.js";
+import { PRIORITY_LABELS, todayKey } from "../core/utils.js";
 
 const COLUMNS = ["text", "done", "priority", "dueDate", "updatedAt"];
 

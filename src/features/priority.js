@@ -5,8 +5,8 @@
 // the caller passes onPick, because only popup.js knows how to persist and
 // re-render.
 
-import { PRIORITY_LABELS, PRIORITY_ORDER } from "./utils.js";
-import { closeMenu, toggleMenu } from "./menu.js";
+import { PRIORITY_LABELS, PRIORITY_ORDER } from "../core/utils.js";
+import { closeMenu, toggleMenu } from "../ui/menu.js";
 
 const priorityMenuEl = document.getElementById("priority-menu");
 

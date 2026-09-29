@@ -1,4 +1,4 @@
-import { getHighPriorityItems, loadState, nextReminderTime } from "./utils.js";
+import { getHighPriorityItems, loadState, nextReminderTime } from "./core/utils.js";
 
 const ALARM_NAME = "reminder.daily";
 const DAY_IN_MINUTES = 1440;

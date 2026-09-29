@@ -3,27 +3,39 @@
 Chrome Manifest V3 extension: a toolbar popup todo checklist, plus a service
 worker that opens a daily reminder window. No build step, no framework, no
 dependencies. The repo root *is* the extension — `manifest.json` sits here, and
-that is the folder you point `chrome://extensions` at.
+that is the folder you point `chrome://extensions` at. The source lives under
+`src/`, but the manifest and the two HTML pages stay at the root: Chrome pins the
+manifest to the folder you select, and the pages are named by unchecked path
+strings (`default_popup` in the manifest, `url: "reminder.html"` in
+`src/background.js`) that fail at runtime with no error at edit time.
 
 ## Layout
+
+The source sits under `src/`, laid out by layer: `core` ← `ui` ← `features` ←
+entry points, and nothing imports upward.
 
 | File | Owns |
 | --- | --- |
 | `manifest.json` | MV3 definition. `storage` + `alarms`, no host permissions |
 | `popup.html` | Markup + `row-tpl` / `group-tpl` templates + the priority menu container + the settings panel |
-| `popup.css` | Theme tokens and all styling, for the popup *and* the reminder window |
-| `popup.js` | DOM rendering and event wiring. No business logic |
-| `settings.js` | The settings panel: its open state and its controls |
-| `utils.js` | Storage, parsing, dates, grouping. **No DOM access** |
-| `drag-drop.js` | HTML5 drag events, drop markers, and the dragged-row state |
-| `background.js` | Service worker. Owns the reminder alarm and opens its window |
-| `reminder.html` / `reminder.js` | The daily HIGH-priority reminder window |
+| `reminder.html` | The reminder window's page |
+| `src/popup.css` | Theme tokens and all styling, for the popup *and* the reminder window |
+| `src/popup.js` | DOM rendering and event wiring. No business logic |
+| `src/reminder.js` | The reminder window: opens for HIGH-priority work, lists everything outstanding |
+| `src/background.js` | Service worker. Owns the reminder alarm and opens its window |
+| `src/core/utils.js` | Storage, parsing, dates, grouping. **No DOM access** |
+| `src/ui/menu.js` | The shared popover mechanics one menu at a time is built on |
+| `src/ui/drag-drop.js` | HTML5 drag events, drop markers, and the dragged-row state |
+| `src/features/priority.js` | The per-row priority tag and its menu |
+| `src/features/due-date.js` | The per-row due chip and its menu |
+| `src/features/settings.js` | The settings panel: its open state and its controls |
+| `src/features/export.js` | CSV export of the list |
 
-`popup.html` loads `popup.js` with `type="module"`, so ES `import`/`export` works
-across every script it pulls in. Adding a module to the popup means adding it as
-an import, not a second `<script>` tag. `reminder.html` is a separate page with
-its own entry point, and `background.js` is declared `"type": "module"` in the
-manifest so it can import `utils.js` too.
+`popup.html` loads `src/popup.js` with `type="module"`, so ES `import`/`export`
+works across every script it pulls in. Adding a module to the popup means adding
+it as an import, not a second `<script>` tag. `reminder.html` is a separate page
+with its own entry point, and `src/background.js` is declared `"type": "module"`
+in the manifest so it can import `utils.js` too.
 
 ## Architecture rules
 
@@ -143,7 +155,7 @@ There is no test framework in the repo. Verification is done by driving the real
 files in `jsdom` from the scratchpad directory:
 
 ```js
-const dom = new JSDOM(html.replace('<script type="module" src="popup.js"></script>', ""));
+const dom = new JSDOM(html.replace('<script type="module" src="src/popup.js"></script>', ""));
 global.window = dom.window; global.document = dom.window.document;
 global.localStorage = dom.window.localStorage;
 await import("./popup.mjs");
@@ -166,9 +178,6 @@ Two things that matter when writing these tests:
 
 ## Loose ends
 
-- `INSTALL.md` is stale: it documents the removed click-to-cycle priority
-  behaviour and tells people to select an `extension/` folder that does not
-  exist. `README.md` supersedes it.
 - `debounce()` and `formatDate()` in `utils.js` are exported but unused.
   `debounce()` was a leading-edge guard against rapid-Enter duplicate adds and
   was later unwired; `formatDate()` rendered the per-row modified stamp that the

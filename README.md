@@ -199,14 +199,25 @@ never leave your machine.
 
 ## Project layout
 
+The manifest and the two HTML pages stay at the repo root — that is the folder you
+load in Chrome. Everything else lives under `src/`, grouped by layer: `core` is
+pure logic, `ui` is generic interaction mechanics, `features` are self-contained
+pieces of the list, and the three files at `src/` top level are the entry points.
+
 | File | What it holds |
 | --- | --- |
 | `manifest.json` | Manifest V3 definition, `storage` and `alarms` permissions |
 | `popup.html` | Popup markup, row and group templates, settings panel |
-| `popup.css` | Theme tokens, light/dark via `data-theme` |
-| `popup.js` | DOM rendering and event wiring |
-| `settings.js` | The settings panel and its controls |
-| `utils.js` | Storage, date and grouping logic, with no DOM access |
-| `background.js` | Service worker: owns the reminder alarm |
-| `reminder.html`, `reminder.js` | The daily reminder window |
+| `reminder.html` | The reminder window's page |
+| `src/popup.css` | Theme tokens, light/dark via `data-theme` |
+| `src/popup.js` | DOM rendering and event wiring |
+| `src/reminder.js` | The daily reminder window's logic |
+| `src/background.js` | Service worker: owns the reminder alarm |
+| `src/core/utils.js` | Storage, date and grouping logic, with no DOM access |
+| `src/ui/menu.js` | Shared popover mechanics for the row menus |
+| `src/ui/drag-drop.js` | Drag-to-reorder events and drop markers |
+| `src/features/priority.js` | The row's priority pill and its menu |
+| `src/features/due-date.js` | The row's due-date chip and its menu |
+| `src/features/settings.js` | The settings panel and its controls |
+| `src/features/export.js` | CSV export |
 | `icons/` | Toolbar icons at 16 / 32 / 48 / 128 px |

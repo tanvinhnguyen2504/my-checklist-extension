@@ -6,7 +6,7 @@ import {
   saveState,
   touchItem,
   sortByPriority,
-} from "./utils.js";
+} from "./core/utils.js";
 
 
 const listEl = document.getElementById("reminder-list");

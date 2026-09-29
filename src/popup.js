@@ -16,13 +16,13 @@ import {
   setAllDone,
   sortByPriority,
   touchItem,
-} from "./utils.js";
-import { createDragController } from "./drag-drop.js";
-import { closeMenu, installMenuDismissal } from "./menu.js";
-import { installSettings, renderSettings } from "./settings.js";
-import { attachPriorityTag } from "./priority.js";
-import { attachDueChip } from "./due-date.js";
-import { downloadCsv } from "./export.js";
+} from "./core/utils.js";
+import { createDragController } from "./ui/drag-drop.js";
+import { closeMenu, installMenuDismissal } from "./ui/menu.js";
+import { installSettings, renderSettings } from "./features/settings.js";
+import { attachPriorityTag } from "./features/priority.js";
+import { attachDueChip } from "./features/due-date.js";
+import { downloadCsv } from "./features/export.js";
 
 const listEl = document.getElementById("list");
 const rowTemplate = document.getElementById("row-tpl");
