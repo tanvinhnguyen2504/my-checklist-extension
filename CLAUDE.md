@@ -166,9 +166,6 @@ Two things that matter when writing these tests:
 
 ## Loose ends
 
-- `INSTALL.md` is stale: it documents the removed click-to-cycle priority
-  behaviour and tells people to select an `extension/` folder that does not
-  exist. `README.md` supersedes it.
 - `debounce()` and `formatDate()` in `utils.js` are exported but unused.
   `debounce()` was a leading-edge guard against rapid-Enter duplicate adds and
   was later unwired; `formatDate()` rendered the per-row modified stamp that the
