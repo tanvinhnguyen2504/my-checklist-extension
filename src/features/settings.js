@@ -1,4 +1,4 @@
-import { THEME, WIDTH } from "./utils.js";
+import { THEME, WIDTH } from "../core/utils.js";
 
 let panelEl = null;
 let triggerEl = null;
