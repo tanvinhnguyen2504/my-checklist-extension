@@ -1,4 +1,4 @@
-import { highPriorityItems, loadState, nextReminderTime } from "./utils.js";
+import { getHighPriorityItems, loadState, nextReminderTime } from "./utils.js";
 
 const ALARM_NAME = "reminder.daily";
 const DAY_IN_MINUTES = 1440;
@@ -64,7 +64,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     return;
   }
   // An empty reminder is pure interruption, so there is nothing to show.
-  if (!highPriorityItems(state.items).length) {
+  if (!getHighPriorityItems(state.items).length) {
     return;
   }
 

@@ -193,7 +193,7 @@ export function debounce(fn, wait) {
 
 // What the reminder is for: work that is flagged HIGH and still outstanding.
 // Anything done no longer needs reminding about.
-export function highPriorityItems(items) {
+export function getHighPriorityItems(items) {
   return items.filter((item) => item.priority === PRIORITY.HIGH && !item.done);
 }
 

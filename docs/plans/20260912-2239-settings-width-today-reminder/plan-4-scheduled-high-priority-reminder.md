@@ -10,7 +10,7 @@ HIGH-priority tasks.
 - [ ] Add `"alarms"` to `permissions` and a
       `"background": { "service_worker": "background.js", "type": "module" }`
       entry to `manifest.json`.
-- [ ] Add a pure `highPriorityItems(items)` selector to `utils.js` — HIGH and
+- [ ] Add a pure `getHighPriorityItems(items)` selector to `utils.js` — HIGH and
       not done.
 - [ ] Create `background.js`: owns the alarm, reads state on fire, opens the
       reminder window, and re-syncs the alarm on install and on
@@ -65,7 +65,7 @@ window is open; fall back to unpositioned `create()` rather than throwing inside
 the worker where nobody sees the error.
 
 **If there are no HIGH items, do not open the window.** An empty reminder is pure
-interruption. This makes `highPriorityItems()` a pure function worth unit-testing
+interruption. This makes `getHighPriorityItems()` a pure function worth unit-testing
 in Node on its own.
 
 **`reminder.js` must not import `popup.js`.** `popup.js` calls
@@ -105,7 +105,7 @@ reads and writes that format natively. Validate it in `normalizeSettings()`.
 
 ## Verify
 
-- `node -e` importing `utils.js`: `highPriorityItems()` returns only HIGH,
+- `node -e` importing `utils.js`: `getHighPriorityItems()` returns only HIGH,
   not-done items, and `[]` for an empty or all-done list.
 - Load unpacked; `chrome://extensions` shows the service worker registered with
   no errors in its inspector.
